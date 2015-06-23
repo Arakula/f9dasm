@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "f9dasm", "f9dasm.vcproj", "{207AC0FE-61DD-4AA0-9AA9-5E185CD7775A}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hex2bin", "hex2bin.vcproj", "{139BF91E-C5E7-44F5-B384-D3C2B75C8819}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mot2bin", "mot2bin.vcproj", "{9F545449-0823-4710-95A4-7829155229D1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{207AC0FE-61DD-4AA0-9AA9-5E185CD7775A}.Debug|Win32.ActiveCfg = Debug|Win32
+		{207AC0FE-61DD-4AA0-9AA9-5E185CD7775A}.Debug|Win32.Build.0 = Debug|Win32
+		{207AC0FE-61DD-4AA0-9AA9-5E185CD7775A}.Release|Win32.ActiveCfg = Release|Win32
+		{207AC0FE-61DD-4AA0-9AA9-5E185CD7775A}.Release|Win32.Build.0 = Release|Win32
+		{139BF91E-C5E7-44F5-B384-D3C2B75C8819}.Debug|Win32.ActiveCfg = Debug|Win32
+		{139BF91E-C5E7-44F5-B384-D3C2B75C8819}.Debug|Win32.Build.0 = Debug|Win32
+		{139BF91E-C5E7-44F5-B384-D3C2B75C8819}.Release|Win32.ActiveCfg = Release|Win32
+		{139BF91E-C5E7-44F5-B384-D3C2B75C8819}.Release|Win32.Build.0 = Release|Win32
+		{9F545449-0823-4710-95A4-7829155229D1}.Debug|Win32.ActiveCfg = Debug|Win32
+		{9F545449-0823-4710-95A4-7829155229D1}.Debug|Win32.Build.0 = Debug|Win32
+		{9F545449-0823-4710-95A4-7829155229D1}.Release|Win32.ActiveCfg = Release|Win32
+		{9F545449-0823-4710-95A4-7829155229D1}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
