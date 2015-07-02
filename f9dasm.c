@@ -79,10 +79,13 @@
    V1.68 2015-06-22 setdp addr dp now sets dp for all addresses starting
                       at addr up to the end of input
                     Updated documentation
-
+   V1.69 2015-07-02 (RB) CPU-dependent system vector parsing
+                    automatically inserts 
+                    *   system vectors as word-data labels
+                    *   entry points as code labels
 */
 
-#define ID  "1.68.1"
+#define ID  "1.69"
 
 #if RB_VARIANT
 #define VERSION ID"-RB"
