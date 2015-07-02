@@ -23,17 +23,19 @@
  ***************************************************************************/
 
 /*
-There's a variant "1.61-RB" available at
-  https://github.com/gordonjcp/f9dasm
-(based on my V1.60) which contains some interesting changes by Rainer Buchty.
-Unfortunately, I only saw that by chance in summer 2015, 6 versions later.
-Rainer customized it to his own taste, so I didn't directly add his changes
-to my code, which defaults to TSC Assembler compatible output;
-you can, however, create a "Rainer Buchty compatible variant" by setting the
-following definition to anything other than 0.
-*/
+ * There's a variant "1.61-RB" available at
+ *     https://github.com/gordonjcp/f9dasm
+ * (based on my V1.60) which contains some interesting changes by Rainer Buchty.
+ * Unfortunately, I only saw that by chance in summer 2015, 6 versions later.
+ * Rainer customized it to his own taste, so I didn't directly add his changes
+ * to my code, which defaults to TSC Assembler compatible output;
+ * you can, however, create a "Rainer Buchty compatible variant" by either
+ * 
+ *     1) setting the -DRB_VARIANT compiler flag or
+ *     2) uncommenting the following definition and setting it to anything other than 0.
+ */
 
-#define RB_VARIANT 0
+// #define RB_VARIANT 0
 
 /* History, as far as I could retrace it:
 
@@ -80,10 +82,12 @@ following definition to anything other than 0.
 
 */
 
+#define ID  "1.68.1"
+
 #if RB_VARIANT
-#define VERSION "1.68-RB"
+#define VERSION ID"-RB"
 #else
-#define VERSION "1.68"
+#define VERSION ID
 #endif
 
 /* NOTE! os9 call table is not tested. */
@@ -101,11 +105,12 @@ following definition to anything other than 0.
 #define ATTRBYTE(address) (label[(address) & 0xffff])
 
 #define DATATYPE_BYTE   0x00
-#define DATATYPE_WORD   0x08
 #define DATATYPE_DEC    0x00
+#define DATATYPE_WORD   0x08
 #define DATATYPE_BINARY 0x10
 #define DATATYPE_HEX    0x20
-#define DATATYPE_CHAR   (DATATYPE_BINARY | DATATYPE_HEX)
+
+#define DATATYPE_CHAR                   (DATATYPE_BINARY | DATATYPE_HEX)
 #define DATATYPE_RMB    (DATATYPE_WORD | DATATYPE_BINARY | DATATYPE_HEX)
 
 #define AREATYPE_CLABEL 0x01
@@ -121,26 +126,26 @@ following definition to anything other than 0.
 #define AREATYPE_CHAR   (AREATYPE_DATA | DATATYPE_CHAR)
 #define AREATYPE_CONST  (AREATYPE_CODE | AREATYPE_DATA)
 
-#define IS_CODE(address) ((ATTRBYTE(address)&AREATYPE_CONST)==AREATYPE_CODE)
-#define IS_DATA(address) ((ATTRBYTE(address)&AREATYPE_CONST)==AREATYPE_DATA)
-#define IS_CONST(address) ((ATTRBYTE(address)&AREATYPE_CONST)==AREATYPE_CONST)
+#define IS_CODE(address)    ((ATTRBYTE(address)&AREATYPE_CONST)==AREATYPE_CODE)
+#define IS_DATA(address)    ((ATTRBYTE(address)&AREATYPE_CONST)==AREATYPE_DATA)
+#define IS_CONST(address)   ((ATTRBYTE(address)&AREATYPE_CONST)==AREATYPE_CONST)
 
-#define SET_USED(address) used[(address) / 8] |= (1 << ((address) % 8))
-#define SET_UNUSED(address) used[(address) / 8] &= ~(1 << ((address) % 8))
-#define IS_USED(address) (!!(used[(address) / 8] & (1 << ((address) % 8))))
+#define SET_USED(address)       used[(address) / 8] |=  (1 << ((address) % 8))
+#define SET_UNUSED(address)     used[(address) / 8] &= ~(1 << ((address) % 8))
+#define IS_USED(address)    (!!(used[(address) / 8] &   (1 << ((address) % 8))))
 
-#define IS_LABEL(address) (!!(ATTRBYTE(address) & AREATYPE_LABEL))
-#define IS_CLABEL(address) ((ATTRBYTE(address) & (AREATYPE_CLABEL | AREATYPE_LABEL)) == (AREATYPE_CLABEL | AREATYPE_LABEL))
-#define IS_DLABEL(address) ((ATTRBYTE(address) & (AREATYPE_CLABEL | AREATYPE_LABEL)) == AREATYPE_LABEL)
-#define IS_ULABEL(address) ((ATTRBYTE(address) & (AREATYPE_ULABEL | AREATYPE_LABEL)) == (AREATYPE_ULABEL | AREATYPE_LABEL))
+#define IS_LABEL(address)   (!!(ATTRBYTE(address) & AREATYPE_LABEL))
 
-#define IS_BREAK(address)  ((ATTRBYTE(address) & (AREATYPE_ULABEL | AREATYPE_LABEL)) == AREATYPE_ULABEL)
+#define IS_CLABEL(address)    ((ATTRBYTE(address) & (AREATYPE_CLABEL | AREATYPE_LABEL)) ==                  (AREATYPE_CLABEL | AREATYPE_LABEL))
+#define IS_DLABEL(address)    ((ATTRBYTE(address) & (AREATYPE_CLABEL | AREATYPE_LABEL)) ==                                     AREATYPE_LABEL)
+#define IS_ULABEL(address)    ((ATTRBYTE(address) & (AREATYPE_ULABEL | AREATYPE_LABEL)) == (AREATYPE_ULABEL                  | AREATYPE_LABEL))
+#define IS_BREAK(address)     ((ATTRBYTE(address) & (AREATYPE_ULABEL | AREATYPE_LABEL)) ==  AREATYPE_ULABEL)
 
-#define IS_WORD(address) (!!(ATTRBYTE(address) & DATATYPE_WORD))
-#define IS_BINARY(address) (!!(ATTRBYTE(address) & DATATYPE_BINARY))
-#define IS_HEX(address) (!!(ATTRBYTE(address) & DATATYPE_HEX))
-#define IS_CHAR(address)  (!IS_WORD(address) && IS_HEX(address) && IS_BINARY(address))
-#define IS_RMB(address) ((ATTRBYTE(address) & DATATYPE_RMB) == DATATYPE_RMB)
+#define IS_WORD(address)    (!!(ATTRBYTE(address) & DATATYPE_WORD))
+#define IS_BINARY(address)  (!!(ATTRBYTE(address) & DATATYPE_BINARY))
+#define IS_HEX(address)     (!!(ATTRBYTE(address) & DATATYPE_HEX))
+#define IS_CHAR(address)    (!IS_WORD(address) && IS_HEX(address) && IS_BINARY(address))
+#define IS_RMB(address)     ((ATTRBYTE(address) & DATATYPE_RMB) == DATATYPE_RMB)
 
 #ifndef TYPES
 #define TYPES
@@ -168,7 +173,7 @@ typedef unsigned short word;
 /*****************************************************************************/
 
 byte *memory = NULL;
-byte *label = NULL;
+byte *label = NULL;                     
 byte *used = NULL;
 char **lblnames = NULL;
 char **commentlines = NULL;
@@ -208,6 +213,13 @@ static char *loaded[200] = {0};
 char *sLoadType = "";
 /* RB: get a divider after BRA/JMP/SWIx/RTS/RTI/PULx PC */
 int optdelimbar = FALSE;  
+
+/* RB: vector address */
+int vaddr;
+
+/* RB: system vectors */
+char *vec_6801[] = {"IRQ_SCI","IRQ_T0F","IRQ_OCF","IRQ_ICF","IRQ_EXT","SWI","NMI","RST"};
+char *vec_6809[] = {"DIV0","SWI3","SWI2","FIRQ","IRQ","SWI","NMI","RST"};
 
 enum                                    /* available options                 */
   {
@@ -3616,7 +3628,7 @@ return (nBytes > 0);                    /* pass back #bytes interpreted      */
 /* IsMotorolaHex : tries to load as a Motorola HEX file                      */
 /*****************************************************************************/
 
-int IsMotorolaHex(FILE *f, byte *memory, unsigned *pbegin, unsigned *pend, unsigned *pload)
+int IsMotorolaHex(FILE *f, byte *memory, unsigned *pbegin, unsigned *pend, int *pload)
 {
 int nCurPos = ftell(f);
 int c = 0;
@@ -3719,7 +3731,7 @@ return (nBytes > 0);                    /* pass back #bytes interpreted      */
 int loadfile
     (
     char *fn,
-    unsigned *pbegin, unsigned *pend, unsigned *pload, unsigned offset,
+    unsigned *pbegin, unsigned *pend, int *pload, unsigned offset,
     FILE *out
     )
 {
@@ -3772,13 +3784,14 @@ return 0;
 /* processinfo : processes an information file                               */
 /*****************************************************************************/
 
-void processinfo(char *name, FILE *outfile)
+void processinfo(char *name, FILE *outfile, int *FoundVectors)
 {
 FILE *fp = NULL;
 char szBuf[256];
 int i;
 byte bDataType;
 byte endinfo = 0;
+
 enum
   {
   infoCode,                             /* [+]CODE addr[-addr]               */
@@ -3813,6 +3826,8 @@ enum
   infoEnd,                              /* END (processing this file)        */
   infoFile,                             /* FILE filename                     */
   infoUnsetDP,                          /* UNSETDP [addr[-addr]]             */
+  infoCVector,                          /* [C]VEC[TOR] addr[-addr]           */
+  infoDVector,                          /* DVEC[TOR] addr[-addr]             */
   };
 static struct                           /* structure to convert key to type  */
   {
@@ -3866,7 +3881,16 @@ static struct                           /* structure to convert key to type  */
   { "REMAP",        infoRemap },
   { "END",          infoEnd },
   { "FILE",         infoFile },
+  { "VECTOR",       infoCVector },
+  { "VEC",          infoCVector },
+  { "CVECTOR",      infoCVector },
+  { "CVEC",         infoCVector },
+  { "DVECTOR",      infoDVector },
+  { "DVEC",         infoDVector },
   };
+
+/* RB: will be set to 1 if [C|D]VEC[TOR] statement was found */
+*FoundVectors = FALSE; 
 
 strcpy(szBuf, name);
 #if !FNCASESENS
@@ -3960,25 +3984,47 @@ while (fgets(szBuf, sizeof(szBuf), fp))
     case infoHex :                      /* [+]HEX addr[-addr]                */
     case infoDec :                      /* [+]DEC addr[-addr]                */
     case infoChar :                     /* [+]CHAR addr[-addr]               */
-      if (nType == infoHex)
-        bDataType = DATATYPE_HEX;
-      else if (nType == infoDec)
-        bDataType = DATATYPE_DEC;
-      else if (nType == infoChar)
-        bDataType = DATATYPE_CHAR;
-      else if (nType == infoBinary)
-        bDataType = DATATYPE_BINARY;
-      else if (nType != infoUnused)
-        bDataType = defaultDataType;
-      else
-        bDataType = 0;
+    case infoCVector:                   /* [+][C]VEC[TOR] addr[-addr]        */
+    case infoDVector:                   /* [+]DVEC[TOR] addr[-addr]          */
+
+      /* RB: signal VECTOR statement occurrence */
+      if (
+        (nType == infoCVector)||
+        (nType == infoDVector)
+      )
+        *FoundVectors = TRUE;
+
+      /* datatype setting */
+      switch(nType)
+      {
+        case infoHex:     bDataType = DATATYPE_HEX;     break;
+        case infoDec:     bDataType = DATATYPE_DEC;     break;
+        case infoChar:    bDataType = DATATYPE_CHAR;    break;
+        case infoBinary:  bDataType = DATATYPE_BINARY;  break;
+        case infoCVector:
+        case infoDVector: bDataType = DATATYPE_WORD;    break;  /* RB: vectors are 16-bit in size */
+        default:
+          if (nType != infoUnused)
+            bDataType = defaultDataType;
+          else
+            bDataType = 0;
+      }
+
       nScanned = Scan2Hex(p, &nFrom, &nTo);
+
+      // skip if not at least "from" address found
       if (nScanned < 1)
         break;
+
+      // set implicit "to" address, if not specified
       if (nScanned == 1)
         nTo = (nType == infoWord) ? nFrom + 1 : nFrom;
+
+      // skip in case of erratic ranges
       if ((nFrom < 0) || (nTo < 0) || (nFrom > nTo) || (nTo >= 0x10000))
         break;
+
+      // process address range
       for (; nFrom <= nTo; nFrom++)
         if (nType == infoUnused)
           {
@@ -3988,6 +4034,8 @@ while (fgets(szBuf, sizeof(szBuf), fp))
           }
         else
           {
+
+          /* "+" modifier was found */
           if (bMod)
             {
             if ((nType == infoBinary) || 
@@ -4004,7 +4052,13 @@ while (fgets(szBuf, sizeof(szBuf), fp))
                                    AREATYPE_WORD |
                                    AREATYPE_CHAR | AREATYPE_BINARY | AREATYPE_HEX);
             }
-          if (nType == infoRMB)
+
+          /* RB: not sure if vectors need this enforcement? */
+          if (
+            (nType == infoRMB) || 
+            (nType == infoCVector) ||
+            (nType == infoDVector)
+          )
             SET_USED(nFrom);            /* force byte to USED                */
 
           if (nType == infoDec)
@@ -4022,6 +4076,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
                                 0);
           }
       break;
+
     case infoUnlabel :                  /* UNLABEL addr[-addr]               */
       nScanned = Scan2Hex(p, &nFrom, &nTo);
       if (nScanned == 1)
@@ -4040,6 +4095,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
         ATTRBYTE(nScanned) &= ~AREATYPE_LABEL;
         }
       break;
+
     case infoUsedLabel :                /* USEDLABEL addr[-addr]             */
       nScanned = Scan2Hex(p, &nFrom, &nTo);
       if (nScanned == 1)
@@ -4051,6 +4107,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
       for (nScanned = nFrom; nScanned <= nTo; nScanned++)
         ATTRBYTE(nScanned) |= AREATYPE_ULABEL;
       break;
+
     case infoUncomment :                /* UNCOMMENT addr[-addr]             */
     case infoUnLComment :               /* UNLCOMMENT addr[-addr]            */
       {
@@ -4200,6 +4257,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
         }
       }
       break;
+
     case infoInclude :                  /* INCLUDE infofilename              */
       {
       char *fname = p;
@@ -4213,9 +4271,10 @@ while (fgets(szBuf, sizeof(szBuf), fp))
       if (*p)
         *p = '\0';
       if (*fname)
-        processinfo(fname, outfile);
+        processinfo(fname, outfile, FoundVectors);
       }
       break;
+
     case infoSetDP :                    /* SETDP [addr[-addr]] dp            */
       if (codes != m6800_codes &&       /* this is not for M6800!            */
           codes != m6801_codes)
@@ -4250,6 +4309,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
           }
         }
       break;
+
     case infoUnsetDP :                  /* UNSETDP [addr[-addr]]             */
       nScanned = Scan2Hex(p, &nFrom, &nTo);
       if (nScanned < 1)                 /* if global DP                      */
@@ -4266,6 +4326,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
           dps[nScanned] = 0x0101;       /* disable range DP                  */
         }
       break;
+
     case infoLComment :                 /* LCOMMENT addr[-addr] [.]lcomment  */
     case infoPrepLComment :             /* PREPLCOMM addr[-addr] [.]lcomment */
       {
@@ -4338,6 +4399,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
         }
       }
       break;
+
     case infoPatch :                    /* PATCH addr [byte]*                */
     case infoPatchWord :                /* PATCHW addr [word]*               */
       {
@@ -4370,6 +4432,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
         } while (1);
       }
       break;
+
     case infoPrepComm :                 /* PREPCOMM [addr[-addr]] comment    */
       if (!emitComments)
         break;
@@ -4416,6 +4479,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
           }
         }
       break;
+
     case infoRelative :                 /* RELATIVE addr[-addr] rel          */
       {
       char *laddr = p;
@@ -4442,6 +4506,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
         rels[nScanned] = nrel;
       }
       break;
+
     case infoUnRelative :               /* UNRELATIVE addr[-addr]            */
       {
       nScanned = Scan2Hex(p, &nFrom, &nTo);
@@ -4455,6 +4520,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
         rels[nScanned] = 0;
       }
       break;
+
     case infoRemap :                    /* REMAP addr[-addr] offs            */
       {
       char *laddr = p;
@@ -4489,6 +4555,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
         remaps[nScanned] += nremap;
       }
       break;
+
     case infoFile :                     /* FILE filename                     */
       {
       char *fname = p;
@@ -4516,6 +4583,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
   }
 
 fclose(fp);
+
 }
 
 /*****************************************************************************/
@@ -4526,11 +4594,12 @@ int main(int argc, char *argv[])
 {
 unsigned pc, add;
 int i, n, nComment, isautolabel, curdp;
-/* RB: get a divider between data and code */
-int lastwasdata = FALSE;
 char buf[256];
 FILE *out = stdout;
 
+int lastwasdata = FALSE;  /* RB: get a divider between data and code */
+int fvec=0;               /* RB: found vector in label file flag */
+    
 printf("f9dasm: M6800/1/2/3/8/9 / H6309 Binary/OS9/FLEX9 Disassembler V" VERSION "\n");
 
 for (i = 1, n = 0; i < argc; ++i)
@@ -4551,7 +4620,8 @@ for (i = 1, n = 0; i < argc; ++i)
   }
 
 memory = (byte *)malloc(0x10000);
-label = (byte *)malloc(0x10000);
+label = (byte *)malloc(0x10000); 
+//label = (int *)malloc(0x10000);     /* RB: byte was not enough -- let's go for 32 bit and be safe ... */
 used = (byte *)malloc(0x10000 / 8);
 lblnames = (char **)malloc(0x10000 * sizeof(char *));
 commentlines = (char **)malloc(0x10000 * sizeof(char *));
@@ -4611,9 +4681,75 @@ if (fname && loadfile(fname, &begin, &end, &load, offset, out))
   return 1;
   }
 
-if (infoname)                           /* now get all other settings        */
-  processinfo(infoname, out);           /* from info file                    */
+/*****************************/
+/* RB: insert system vectors */
+/*****************************/
 
+// base vector address
+pc=0xfff0;
+
+// 6809 has 0xfff0/1 reserved
+// comment out #if section for proper databook behavior
+if(codes==m6809_codes)
+{
+  #if 0
+  // precaution in case of funky HEX/S files
+  // blank memory is filled with $010101...
+  if( ARGWORD(pc)!=0x0101 )
+  {
+    ATTRBYTE(pc)  |=AREATYPE_WORD;
+    ATTRBYTE(pc+1)|=AREATYPE_WORD;
+    lblnames[pc]=malloc(16);
+    sprintf(lblnames[pc], "svec_RESERVED");
+  }
+  #endif
+  pc+=2;
+}
+
+// 6800/2/8 have only upper 4
+else if (codes==m6800_codes)
+  pc+=8;
+  
+// set label names and attributes
+for(; pc<=0xfffe; pc+=2)
+{
+  // precaution in case of funky HEX/S files
+  // blank memory is filled with $010101...
+  if( ARGWORD(pc)!=0x0101 )
+  {
+    // vectors are words and data
+    ATTRBYTE(pc)  |=AREATYPE_WORD|AREATYPE_LABEL;
+    ATTRBYTE(pc+1)|=AREATYPE_WORD;
+
+    // add target address as type jump as we don't know whether if, where, and when we'll be hitting RTx
+    vaddr=ARGWORD(pc);  // (memory[pc]<<8)|(memory[pc+1]);
+    AddLabel(_jmp, (word)vaddr);
+
+    // add handler label
+    ATTRBYTE(vaddr)|=AREATYPE_CODE|AREATYPE_CLABEL|AREATYPE_LABEL;
+
+    // enter system vector names and according handlers
+    lblnames[pc]=malloc(16);
+    lblnames[vaddr]=malloc(16);
+
+    if(codes==m6801_codes)
+    {
+      sprintf(lblnames[pc],    "svec_%s", vec_6801[(pc>>1)&7]);
+      sprintf(lblnames[vaddr], "hdlr_%s", vec_6801[(pc>>1)&7]);
+    }
+    else
+    {
+      sprintf(lblnames[pc],    "svec_%s", vec_6809[(pc>>1)&7]);
+      sprintf(lblnames[vaddr], "hdlr_%s", vec_6809[(pc>>1)&7]);
+    }
+  }
+}
+
+if (infoname)                           /* now get all other settings        */
+  processinfo(infoname, out, &fvec);    /* from info file                    */
+
+// RB: is this true?                                                         
+// Can we safely assume that the load address is a valid jump entry?         
 if (load >= 0)
   AddLabel(_jmp, (word)load);
 
