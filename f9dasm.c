@@ -35,7 +35,7 @@
  *     2) uncommenting the following definition and setting it to anything other than 0.
  */
 
-// #define RB_VARIANT 0
+/* #define RB_VARIANT 0 */
 
 /* History, as far as I could retrace it:
 
@@ -1901,7 +1901,7 @@ if (T & 0x80)
         if ((W < 0x80) || (W >= 0xff80))
           sprintf(buf, "%s%s,%c", forceextendedaddr, signed_string((int)(short)W, 4, (word)(PC - 2)), R);
         else
-          sprintf(buf, "%s,%c", number_string((word)(int)(short)W, 4, (word)(PC - 2)), R);  // RB: this was "signed_string"
+          sprintf(buf, "%s,%c", number_string((word)(int)(short)W, 4, (word)(PC - 2)), R);  /* RB: this was "signed_string" */
         }
       break;
     case 0x0B:
@@ -2770,7 +2770,7 @@ switch (M)
 /* increased readability: divider after jumps (but not subroutine calls)     */
 if (!strcmp(I,"RTI") ||
     !strcmp(I,"RTS") ||
-    (!strncmp(I, "PUL", 3) && (T & 0x80)) ||  // PULx PC
+    (!strncmp(I, "PUL", 3) && (T & 0x80)) ||  /* PULx PC */
     !strncmp(I, "JMP", 3) ||
     !strncmp(I, "BRA", 3) ||
     !strncmp(I," SWI", 3) )
@@ -3995,19 +3995,19 @@ while (fgets(szBuf, sizeof(szBuf), fp))
 
       nScanned = Scan2Hex(p, &nFrom, &nTo);
 
-      // skip if not at least "from" address found
+      /* skip if not at least "from" address found */
       if (nScanned < 1)
         break;
 
-      // set implicit "to" address, if not specified
+      /* set implicit "to" address, if not specified */
       if (nScanned == 1)
         nTo = (nType == infoWord) ? nFrom + 1 : nFrom;
 
-      // skip in case of erratic ranges
+      /* skip in case of erratic ranges */
       if ((nFrom < 0) || (nTo < 0) || (nFrom > nTo) || (nTo >= 0x10000))
         break;
 
-      // process address range
+      /* process address range */
       for (; nFrom <= nTo; nFrom++)
         if (nType == infoUnused)
           {
@@ -4385,7 +4385,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
       for (; (*p) && (*p != ' ') && (*p != '\t'); p++) ;
       if (*p)
         *p++ = '\0';
-//      if (sscanf(laddr, "%x", &nFrom) != 1)
+/*      if (sscanf(laddr, "%x", &nFrom) != 1) */
       if (ScanHex(laddr, &nFrom) != 1)
         break;
       do
@@ -4510,7 +4510,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
         *p++ = '\0';
       for (; (*p == ' ') || (*p == '\t'); p++)
         ;
-      // allow remapped remaps... :-)
+      /* allow remapped remaps... :-) */
       nScanned = Scan2Hex(laddr, &nFrom, &nTo);
       if (nScanned < 1)
         break;
@@ -4661,16 +4661,16 @@ if (fname && loadfile(fname, &begin, &end, &load, offset, out))
 /* RB: insert system vectors */
 /*****************************/
 
-// base vector address
+/* base vector address */
 pc=0xfff0;
 
-// 6809 has 0xfff0/1 reserved
-// comment out #if section for proper databook behavior
+/* 6809 has 0xfff0/1 reserved                           */
+/* comment out #if section for proper databook behavior */
 if(codes==m6809_codes)
 {
   #if 0
-  // precaution in case of funky HEX/S files
-  // blank memory is filled with $010101...
+  /* precaution in case of funky HEX/S files  */
+  /* blank memory is filled with $010101...   */
   if( ARGWORD(pc)!=0x0101 )
   {
     ATTRBYTE(pc)  |=AREATYPE_WORD;
@@ -4682,29 +4682,29 @@ if(codes==m6809_codes)
   pc+=2;
 }
 
-// 6800/2/8 have only upper 4
+/* 6800/2/8 have only upper 4 */
 else if (codes==m6800_codes)
   pc+=8;
   
-// set label names and attributes
+/* set label names and attributes */
 for(; pc<=0xfffe; pc+=2)
 {
-  // precaution in case of funky HEX/S files
-  // blank memory is filled with $010101...
+  /* precaution in case of funky HEX/S files  */
+  /* blank memory is filled with $010101...   */
   if( ARGWORD(pc)!=0x0101 )
   {
-    // vectors are words and data
+    /* vectors are words and data */
     ATTRBYTE(pc)  |=AREATYPE_WORD|AREATYPE_LABEL;
     ATTRBYTE(pc+1)|=AREATYPE_WORD;
 
-    // add target address as type jump as we don't know whether if, where, and when we'll be hitting RTx
-    vaddr=ARGWORD(pc);  // (memory[pc]<<8)|(memory[pc+1]);
+    /* add target address as type jump as we don't know whether if, where, and when we'll be hitting RTx */
+    vaddr=ARGWORD(pc);  
     AddLabel(_jmp, (word)vaddr);
 
-    // add handler label
+    /* add handler label */
     ATTRBYTE(vaddr)|=AREATYPE_CODE|AREATYPE_CLABEL|AREATYPE_LABEL;
 
-    // enter system vector names and according handlers
+    /* enter system vector names and according handlers */
     lblnames[pc]=malloc(16);
     lblnames[vaddr]=malloc(16);
 
@@ -4724,8 +4724,8 @@ for(; pc<=0xfffe; pc+=2)
 if (infoname)                           /* now get all other settings        */
   processinfo(infoname, out);           /* from info file                    */
 
-// RB: is this true?                                                         
-// Can we safely assume that the load address is a valid jump entry?         
+/* RB: is this true?                                                         */
+/* Can we safely assume that the load address is a valid jump entry?         */
 if (load >= 0)
   AddLabel(_jmp, (word)load);
 
