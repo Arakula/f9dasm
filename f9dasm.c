@@ -3787,7 +3787,7 @@ return 0;
 /* processinfo : processes an information file                               */
 /*****************************************************************************/
 
-void processinfo(char *name, FILE *outfile, int *FoundVectors)
+void processinfo(char *name, FILE *outfile)
 {
 FILE *fp = NULL;
 char szBuf[256];
@@ -3884,16 +3884,7 @@ static struct                           /* structure to convert key to type  */
   { "REMAP",        infoRemap },
   { "END",          infoEnd },
   { "FILE",         infoFile },
-  { "VECTOR",       infoCVector },
-  { "VEC",          infoCVector },
-  { "CVECTOR",      infoCVector },
-  { "CVEC",         infoCVector },
-  { "DVECTOR",      infoDVector },
-  { "DVEC",         infoDVector },
   };
-
-/* RB: will be set to 1 if [C|D]VEC[TOR] statement was found */
-*FoundVectors = FALSE; 
 
 strcpy(szBuf, name);
 #if !FNCASESENS
@@ -3987,15 +3978,6 @@ while (fgets(szBuf, sizeof(szBuf), fp))
     case infoHex :                      /* [+]HEX addr[-addr]                */
     case infoDec :                      /* [+]DEC addr[-addr]                */
     case infoChar :                     /* [+]CHAR addr[-addr]               */
-    case infoCVector:                   /* [+][C]VEC[TOR] addr[-addr]        */
-    case infoDVector:                   /* [+]DVEC[TOR] addr[-addr]          */
-
-      /* RB: signal VECTOR statement occurrence */
-      if (
-        (nType == infoCVector)||
-        (nType == infoDVector)
-      )
-        *FoundVectors = TRUE;
 
       /* datatype setting */
       switch(nType)
@@ -4004,8 +3986,6 @@ while (fgets(szBuf, sizeof(szBuf), fp))
         case infoDec:     bDataType = DATATYPE_DEC;     break;
         case infoChar:    bDataType = DATATYPE_CHAR;    break;
         case infoBinary:  bDataType = DATATYPE_BINARY;  break;
-        case infoCVector:
-        case infoDVector: bDataType = DATATYPE_WORD;    break;  /* RB: vectors are 16-bit in size */
         default:
           if (nType != infoUnused)
             bDataType = defaultDataType;
@@ -4056,12 +4036,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
                                    AREATYPE_CHAR | AREATYPE_BINARY | AREATYPE_HEX);
             }
 
-          /* RB: not sure if vectors need this enforcement? */
-          if (
-            (nType == infoRMB) || 
-            (nType == infoCVector) ||
-            (nType == infoDVector)
-          )
+          if (nType == infoRMB)  
             SET_USED(nFrom);            /* force byte to USED                */
 
           if (nType == infoDec)
@@ -4274,7 +4249,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
       if (*p)
         *p = '\0';
       if (*fname)
-        processinfo(fname, outfile, FoundVectors);
+        processinfo(fname, outfile);
       }
       break;
 
@@ -4601,8 +4576,7 @@ char buf[256];
 FILE *out = stdout;
 
 int lastwasdata = FALSE;  /* RB: get a divider between data and code */
-int fvec=0;               /* RB: found vector in label file flag */
-    
+
 printf("f9dasm: M6800/1/2/3/8/9 / H6309 Binary/OS9/FLEX9 Disassembler V" VERSION "\n");
 
 for (i = 1, n = 0; i < argc; ++i)
@@ -4624,7 +4598,6 @@ for (i = 1, n = 0; i < argc; ++i)
 
 memory = (byte *)malloc(0x10000);
 label = (byte *)malloc(0x10000); 
-//label = (int *)malloc(0x10000);     /* RB: byte was not enough -- let's go for 32 bit and be safe ... */
 used = (byte *)malloc(0x10000 / 8);
 lblnames = (char **)malloc(0x10000 * sizeof(char *));
 commentlines = (char **)malloc(0x10000 * sizeof(char *));
@@ -4749,7 +4722,7 @@ for(; pc<=0xfffe; pc+=2)
 }
 
 if (infoname)                           /* now get all other settings        */
-  processinfo(infoname, out, &fvec);    /* from info file                    */
+  processinfo(infoname, out);           /* from info file                    */
 
 // RB: is this true?                                                         
 // Can we safely assume that the load address is a valid jump entry?         
