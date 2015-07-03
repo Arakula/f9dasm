@@ -256,6 +256,19 @@ Anything following an asterisk (<b>*</b>) is interpreted as a comment.</p>
 	  Would you? I wouldn't.<br>
 	  In this case, it's easier to prepend a <b>remap</b> instruction that tells
 	  f9dasm to "shift" the following addresses in the info file some bytes.</dd>
+  <dt><b>phase <i>addr[-addr] phase</i></b></dt>
+  <dd>Sometimes, an EPROM can contain data that are mapped to a different location;
+      in this case, all jump targets etc. inside that area are incorrect,
+      i.e., "out of phase".
+      The <b>phase</b> instruction tells F9DASM to disassemble that area as if it
+      was starting at the address given in <b><i>phase</i></b>.<br />
+      Using this instruction embeds PHASE/DEPHASE pseudo-ops in the generated source code, so
+      an Assembler that can process these pseudo-ops is required
+      (the mighty <a href="http://john.ccac.rwth-aachen.de:8000/as/">AS</a> can do it,
+      and my A09 can do it since V1.30, too).<br />
+      If your Assembler of choice can't do it, all you can do is to cut the binary
+      in slices, use the <b>-offset</b> command line option to disassemble them,
+      and merge the generated assembler source files by hand.</dd>
   <dt><b>end</b></dt>
   <dd>Terminates processing of this info file at once.</dd>
 
