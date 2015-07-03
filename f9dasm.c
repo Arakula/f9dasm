@@ -84,11 +84,14 @@
                     automatically inserts 
                     *   system vectors as word-data labels
                     *   entry points as code labels
-   V1.70 2015-07-?? phase addr[-addr] phase command added
-
+   V1.70 2015-07-03 phase addr[-addr] phase command added
+   V1.71 2015-07-03 (RB) CVEC/DVEC directives and noLabelLoad option added
+                    *   CVEC/DVEC declare code/data vector fields
+                        if not declared already, they will be auto-inserted into label list
+                    *   noLabelLoad option suppresses adding of load-address label
 */
 
-#define ID  "1.69"
+#define ID  "1.71"
 
 #if RB_VARIANT
 #define VERSION ID "-RB"
@@ -118,6 +121,10 @@
 #define DATATYPE_CHAR   (DATATYPE_BINARY | DATATYPE_HEX)
 #define DATATYPE_RMB    (DATATYPE_WORD | DATATYPE_BINARY | DATATYPE_HEX)
 
+/* RB: new vector datatypes */
+#define DATATYPE_DVEC   0x0100
+#define DATATYPE_CVEC   0x0200
+
 #define AREATYPE_CLABEL 0x01
 #define AREATYPE_LABEL  0x02
 #define AREATYPE_ULABEL 0x04
@@ -130,6 +137,10 @@
 #define AREATYPE_HEX    (AREATYPE_DATA | DATATYPE_HEX)
 #define AREATYPE_CHAR   (AREATYPE_DATA | DATATYPE_CHAR)
 #define AREATYPE_CONST  (AREATYPE_CODE | AREATYPE_DATA)
+
+/* RB: new vector areatypes */
+#define AREATYPE_DVEC   (AREATYPE_WORD | DATATYPE_DVEC)
+#define AREATYPE_CVEC   (AREATYPE_WORD | DATATYPE_CVEC)
 
 #define IS_CODE(address) ((ATTRBYTE(address)&AREATYPE_CONST)==AREATYPE_CODE)
 #define IS_DATA(address) ((ATTRBYTE(address)&AREATYPE_CONST)==AREATYPE_DATA)
@@ -151,6 +162,11 @@
 #define IS_HEX(address) (!!(ATTRBYTE(address) & DATATYPE_HEX))
 #define IS_CHAR(address)  (!IS_WORD(address) && IS_HEX(address) && IS_BINARY(address))
 #define IS_RMB(address) ((ATTRBYTE(address) & DATATYPE_RMB) == DATATYPE_RMB)
+
+/* RB: new vector checks */
+#define IS_VEC(address)   (ATTRBYTE(address) & (DATATYPE_DVEC | DATATYPE_CVEC))
+#define IS_DVEC(address)  (ATTRBYTE(address) & DATATYPE_DVEC)
+#define IS_CVEC(address)  (ATTRBYTE(address) & DATATYPE_CVEC)
 
 #ifndef TYPES
 #define TYPES
@@ -187,7 +203,7 @@ typedef struct _phasedef                /* data for a phase                  */
 /*****************************************************************************/
 
 byte *memory = NULL;
-byte *label = NULL;
+int *label = NULL;                      /* RB: space for more flags          */
 byte *used = NULL;
 char **lblnames = NULL;
 char **commentlines = NULL;
@@ -233,6 +249,9 @@ int optdelimbar = FALSE;
 /* RB: vector address */
 int vaddr;
 
+/* RB: option -- suppress auto-insertion of load-address label */
+int noLoadLabel = FALSE;
+
 /* RB: system vectors */
 char *vec_6801[] = {"IRQ_SCI","IRQ_T0F","IRQ_OCF","IRQ_ICF","IRQ_EXT","SWI","NMI","RST"};
 char *vec_6809[] = {"DIV0","SWI3","SWI2","FIRQ","IRQ","SWI","NMI","RST"};
@@ -272,6 +291,7 @@ enum                                    /* available options                 */
   OPTION_NOFORCED,
   OPTION_6809,
   OPTION_LDCHAR,
+  OPTION_NOLOADLABEL,
   };
 
 static struct
@@ -317,7 +337,8 @@ static struct
   { "forced",    OPTION_FORCED },
   { "noforced",  OPTION_NOFORCED },
   { "ldchar",    OPTION_LDCHAR },
-  { NULL, 0 }
+  { "noll",      OPTION_NOLOADLABEL },
+ { NULL, 0 }
   };
 
 enum addr_mode
@@ -3884,7 +3905,7 @@ return 0;
 /* processinfo : processes an information file                               */
 /*****************************************************************************/
 
-void processinfo(char *name, FILE *outfile)
+void processinfo(char *name, FILE *outfile, int *FoundVectors)
 {
 FILE *fp = NULL;
 char szBuf[256];
@@ -3925,8 +3946,11 @@ enum
   infoRemap,                            /* REMAP addr[-addr] offs            */
   infoFile,                             /* FILE filename                     */
   infoPhase,                            /* PHASE addr[-addr] phase           */
-  infoCVector,                          /* [C]VEC[TOR] addr[-addr]           */
-  infoDVector,                          /* DVEC[TOR] addr[-addr]             */
+
+  /* RB: new vector label types */
+  infoCVector,                           /* CVEC[TOR] addr[-addr]             */
+  infoDVector,                           /* DVEC[TOR] addr[-addr]             */
+
   infoEnd,                              /* END (processing this file)        */
   };
 static struct                           /* structure to convert key to type  */
@@ -3981,6 +4005,13 @@ static struct                           /* structure to convert key to type  */
   { "REMAP",        infoRemap },
   { "FILE",         infoFile },
   { "PHASE",        infoPhase },
+
+  /* RB: new vector label types */
+  { "CVECTOR",      infoCVector },
+  { "CVEC",         infoCVector },
+  { "DVECTOR",      infoDVector },
+  { "DVEC",         infoDVector },
+
   { "END",          infoEnd },
   };
 
@@ -4076,6 +4107,8 @@ while (fgets(szBuf, sizeof(szBuf), fp))
     case infoHex :                      /* [+]HEX addr[-addr]                */
     case infoDec :                      /* [+]DEC addr[-addr]                */
     case infoChar :                     /* [+]CHAR addr[-addr]               */
+    case infoCVector:                   /* [+]CVEC[TOR] addr[-addr]          */
+    case infoDVector:                   /* [+]DVEC[TOR] addr[-addr]          */
 
       /* datatype setting */
       switch(nType)
@@ -4092,15 +4125,25 @@ while (fgets(szBuf, sizeof(szBuf), fp))
         }
 
       nScanned = Scan2Hex(p, &nFrom, &nTo);
+
       /* skip if not at least "from" address found */
       if (nScanned < 1)
         break;
+
       /* set implicit "to" address, if not specified */
       if (nScanned == 1)
         nTo = (nType == infoWord) ? nFrom + 1 : nFrom;
+
       /* skip in case of erratic ranges */
       if ((nFrom < 0) || (nTo < 0) || (nFrom > nTo) || (nTo >= 0x10000))
         break;
+
+      /* RB: signal VECTOR statement occurrence */
+      if (
+        (nType == infoCVector)||
+        (nType == infoDVector)
+      )
+        *FoundVectors = TRUE;
 
       for (; nFrom <= nTo; nFrom++)     /* work through address range        */
         if (nType == infoUnused)
@@ -4111,6 +4154,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
           }
         else
           {
+
           if (bMod)                     /* if '+' modifier was found         */
             {
             if ((nType == infoBinary) || 
@@ -4127,8 +4171,9 @@ while (fgets(szBuf, sizeof(szBuf), fp))
                                    AREATYPE_WORD |
                                    AREATYPE_CHAR | AREATYPE_BINARY | AREATYPE_HEX);
             }
+
           if (nType == infoRMB)
-            SET_USED(nFrom);            /* force byte to USED                */
+            SET_USED(nFrom);            /* force byte@address to USED        */
 
           if (nType == infoDec)
             ATTRBYTE(nFrom) &= ~DATATYPE_HEX;
@@ -4142,6 +4187,8 @@ while (fgets(szBuf, sizeof(szBuf), fp))
                                 (nType == infoBreak)    ? AREATYPE_ULABEL :
                                 (nType == infoHex)      ? AREATYPE_HEX :
                                 (nType == infoChar)     ? AREATYPE_CHAR :
+                                (nType == infoDVector)  ? AREATYPE_DVEC :
+                                (nType == infoCVector)  ? AREATYPE_CVEC :
                                 0);
           }
       break;
@@ -4336,7 +4383,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
       if (*p)
         *p = '\0';
       if (*fname)
-        processinfo(fname, outfile);
+        processinfo(fname, outfile, FoundVectors);
       }
       break;
     case infoSetDP :                    /* SETDP [addr[-addr]] dp            */
@@ -4680,6 +4727,7 @@ int main(int argc, char *argv[])
 unsigned pc, add;
 int i, n, nComment, isautolabel, curdp, curphase = -1;
 int lastwasdata = FALSE;  /* RB: get a divider between data and code */
+int fvec = FALSE;         /* RB: found vector declaration in label file */
 char buf[256];
 FILE *out = stdout;
 
@@ -4703,7 +4751,7 @@ for (i = 1, n = 0; i < argc; ++i)
   }
 
 memory = (byte *)malloc(0x10000);
-label = (byte *)malloc(0x10000);
+label = (int *)malloc(0x10000 * sizeof(int));
 used = (byte *)malloc(0x10000 / 8);
 lblnames = (char **)malloc(0x10000 * sizeof(char *));
 commentlines = (char **)malloc(0x10000 * sizeof(char *));
@@ -4720,7 +4768,7 @@ if ((!memory) || (!label) || (!used) ||
   goto exit;
   }
 memset(memory, 0x01, 0x10000);
-memset(label, 0x00, 0x10000);
+memset(label, 0x00, 0x10000 * sizeof(int));
 memset(used, 0x00, 0x10000 / 8);
 memset(lblnames, 0x00, 0x10000 * sizeof(char *));
 memset(commentlines, 0x00, 0x10000 * sizeof(char *));
@@ -4776,8 +4824,8 @@ pc=0xfff0;                              /* base vector address               */
 if (codes==m6809_codes)
   {
 #if 0
-  /* precaution in case of funky HEX/S files
-  * blank memory is filled with $010101... */
+  /* precaution fop case of funky HEX/S files
+   * blank memory is filled with $010101... */
   if( ARGWORD(pc)!=0x0101 )
     {
     ATTRBYTE(pc)  |=AREATYPE_WORD;
@@ -4795,7 +4843,7 @@ else if (codes==m6800_codes)
 /* set label names and attributes */
 for(; pc<=0xfffe; pc+=2)
 {
-  /* precaution in case of funky HEX/S files
+  /* precaution for case of funky HEX/S files
    * blank memory is filled with $010101... */
   if( ARGWORD(pc)!=0x0101 )
   {
@@ -4803,10 +4851,9 @@ for(; pc<=0xfffe; pc+=2)
     ATTRBYTE(pc)  |=AREATYPE_WORD|AREATYPE_LABEL;
     ATTRBYTE(pc+1)|=AREATYPE_WORD;
 
-    /* add target address as type jump as we don't know whether if,
-       where, and when we'll be hitting RTx */
-    vaddr=ARGWORD(pc);  /* (memory[pc]<<8)|(memory[pc+1]); */
-    AddLabel(_jmp, (word)vaddr);
+    /* add target address as type jump as we don't know 
+     * if, where, and when we'll be hitting RTx */
+    vaddr=ARGWORD(pc);  
 
     /* add handler label */
     ATTRBYTE(vaddr)|=AREATYPE_CODE|AREATYPE_CLABEL|AREATYPE_LABEL;
@@ -4828,15 +4875,67 @@ for(; pc<=0xfffe; pc+=2)
   }
 }
 
-/* RB: is this true?                                                         
+/* 
+ * RB: is this true?                                                         
  * Can we safely assume that the load address is a valid jump entry?         
+ * 
  * HS: we have no way of knowing, but it would be a weird idea to explicitly
- * specify an entry point address that isn't. GIGO. */
-if (load >= 0)
+ * specify an entry point address that isn't. GIGO. 
+ * 
+ * RB: multiple ROMs (or better: ROM banks at the same logical address) disassembled individually might be a counterexample,
+ * there, "spillover" from other banks might occur -- between banked and static code even within an instruction. 
+ * quite a special occurrence, agreed, but I added a "noLoadLabel" option (default: FALSE) for such cases
+ * 
+ */
+if ( (load >= 0) && (noLoadLabel == FALSE) )
   AddLabel(_jmp, (word)load);
 
 if (infoname)                           /* now get all other settings        */
-  processinfo(infoname, out);           /* from info file                    */
+  processinfo(infoname, out, &fvec);    /* from info file                    */
+
+/* RB: any vector fields declared? */
+if(fvec==TRUE)
+{
+  for(pc=0; pc<=0xffff; pc++)
+  {
+
+    /* vectors found? */
+    if(IS_VEC(pc))
+    {
+      /* vectors are words and data */
+      /* no label here, that needs to come from a specific LABEL statement */
+      ATTRBYTE(pc)  |=AREATYPE_WORD;
+      ATTRBYTE(pc+1)|=AREATYPE_WORD;
+
+      /* get target */
+      vaddr=ARGWORD(pc);
+
+      /* target label not defined yet? */
+      if(!IS_LABEL(vaddr))
+      {
+        lblnames[vaddr]=malloc(20*sizeof(char));
+
+        ATTRBYTE(vaddr) |= AREATYPE_LABEL;
+
+        /* code? set flag and jump mark */
+        if(IS_CVEC(pc))
+        {
+          ATTRBYTE(vaddr) |= AREATYPE_CLABEL | AREATYPE_CODE;
+          sprintf(lblnames[vaddr],"M%04X_via_cvec_%04x",vaddr,pc);
+        }
+
+        /* data? mark area as hex. */
+        else
+        {
+          ATTRBYTE(vaddr) |= AREATYPE_HEX;
+          sprintf(lblnames[vaddr],"M%04X_via_dvec_%04x",vaddr,pc);
+        }
+    }
+
+    pc++;
+    }
+  }
+}  
 
 begin &= 0xFFFF;
 end &= 0xFFFF;
@@ -4866,7 +4965,6 @@ do                                      /* (necessary for backward ref's)    */
                                         /* resolve all XXXXXXX+/-nnn labels  */
 for (pc = 0x0000; pc <= 0xFFFF; pc++)
   {
-/*  if ((!IS_USED(pc)) && (IS_LABEL(pc))) */
   if (IS_ULABEL(pc))
     {
     char *p = label_string((word)pc, 1, (word)pc);
