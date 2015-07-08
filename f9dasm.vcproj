@@ -38,7 +38,7 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName=".\Debug/f9dasm.tlb"
+				TypeLibraryName="$(OutDir)\f9dasm.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -48,10 +48,10 @@
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
-				PrecompiledHeaderFile=".\Debug/f9dasm.pch"
-				AssemblerListingLocation=".\Debug/"
-				ObjectFile=".\Debug/"
-				ProgramDataBaseFileName=".\Debug/"
+				PrecompiledHeaderFile="$(IntDir)\f9dasm.pch"
+				AssemblerListingLocation="$(IntDir)\"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="$(IntDir)\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="4"
@@ -69,11 +69,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile=".\Debug/f9dasm.exe"
+				OutputFile="$(OutDir)\f9dasm.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile=".\Debug/f9dasm.pdb"
+				ProgramDatabaseFile="$(OutDir)\f9dasm.pdb"
 				SubSystem="1"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
@@ -91,7 +91,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\Debug/f9dasm.bsc"
+				OutputFile="$(IntDir)\f9dasm.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -127,7 +127,7 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName=".\Release/f9dasm.tlb"
+				TypeLibraryName="$(OutDir)\f9dasm.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -138,10 +138,10 @@
 				StringPooling="true"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
-				PrecompiledHeaderFile=".\Release/f9dasm.pch"
-				AssemblerListingLocation=".\Release/"
-				ObjectFile=".\Release/"
-				ProgramDataBaseFileName=".\Release/"
+				PrecompiledHeaderFile="$(IntDir)\f9dasm.pch"
+				AssemblerListingLocation="$(IntDir)\"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="$(IntDir)\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 			/>
@@ -158,12 +158,12 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile=".\Release/f9dasm.exe"
+				OutputFile="$(OutDir)\f9dasm.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				ProgramDatabaseFile=".\Release/f9dasm.pdb"
+				ProgramDatabaseFile="$(OutDir)\f9dasm.pdb"
 				GenerateMapFile="true"
-				MapFileName=".\Release/f9dasm.map"
+				MapFileName="$(OutDir)\f9dasm.map"
 				SubSystem="1"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
@@ -181,7 +181,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\Release/f9dasm.bsc"
+				OutputFile="$(IntDir)\f9dasm.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"

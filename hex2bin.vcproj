@@ -4,6 +4,7 @@
 	Version="9,00"
 	Name="hex2bin"
 	ProjectGUID="{139BF91E-C5E7-44F5-B384-D3C2B75C8819}"
+	RootNamespace="hex2bin"
 	TargetFrameworkVersion="0"
 	>
 	<Platforms>
@@ -38,7 +39,7 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName=".\Debug/hex2bin.tlb"
+				TypeLibraryName="$(OutDir)\hex2bin.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -48,10 +49,10 @@
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
-				PrecompiledHeaderFile=".\hex2bin___Win32_Debug/hex2bin.pch"
-				AssemblerListingLocation=".\hex2bin___Win32_Debug/"
-				ObjectFile=".\hex2bin___Win32_Debug/"
-				ProgramDataBaseFileName=".\hex2bin___Win32_Debug/"
+				PrecompiledHeaderFile="$(IntDir)\hex2bin.pch"
+				AssemblerListingLocation="$(IntDir)\"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="$(IntDir)\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="4"
@@ -69,11 +70,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile=".\Debug/hex2bin.exe"
+				OutputFile="$(OutDir)\hex2bin.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile=".\Debug/hex2bin.pdb"
+				ProgramDatabaseFile="$(OutDir)\hex2bin.pdb"
 				SubSystem="1"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
@@ -91,7 +92,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\hex2bin___Win32_Debug/hex2bin.bsc"
+				OutputFile="$(IntDir)\hex2bin.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -127,7 +128,7 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName=".\Release/hex2bin.tlb"
+				TypeLibraryName="$(OutDir)\hex2bin.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -138,10 +139,10 @@
 				StringPooling="true"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
-				PrecompiledHeaderFile=".\hex2bin___Win32_Release/hex2bin.pch"
-				AssemblerListingLocation=".\hex2bin___Win32_Release/"
-				ObjectFile=".\hex2bin___Win32_Release/"
-				ProgramDataBaseFileName=".\hex2bin___Win32_Release/"
+				PrecompiledHeaderFile="$(IntDir)\hex2bin.pch"
+				AssemblerListingLocation="$(IntDir)\"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="$(IntDir)\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 			/>
@@ -158,10 +159,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile=".\Release/hex2bin.exe"
+				OutputFile="$(OutDir)\hex2bin.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				ProgramDatabaseFile=".\Release/hex2bin.pdb"
+				ProgramDatabaseFile="$(OutDir)\hex2bin.pdb"
 				SubSystem="1"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
@@ -179,7 +180,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\hex2bin___Win32_Release/hex2bin.bsc"
+				OutputFile="$(IntDir)\hex2bin.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
