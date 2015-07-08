@@ -128,13 +128,17 @@ while ((!done) &&
   switch (nLineType)                    /* now examine line type             */
     {
     case '0' :
+#if 0                                   /* simply ignore the rest of the line*/
       nBytesOnLine--;
       while (nBytesOnLine--)
         GetHex(f, 2);
+#endif
       break;
     case '1' :
       nBytesOnLine -= 3;
       nAddr = GetHex(f,4);              /* get address for bytes             */
+    data16bit:
+      /* this program only deals with 16bit data, so restrict to 0-$FFFF     */
       if ((nAddr < 0) || (nAddr >= 0x10000)) /* if illegal address           */
         { nBytes = -1; break; }         /* return with error                 */
       if (nAddr < begin)                /* adjust start and end values       */
@@ -152,10 +156,33 @@ while ((!done) &&
         ATTRBYTE(nAddr + i) |= 0x80;    /* mark as used byte                 */
         }
       break;
+    case '2' :                          /* record with 24bit address         */
+      nBytesOnLine -= 4;
+      nAddr = GetHex(f,6);              /* get address for bytes             */
+      goto data16bit;
+    case '3' :                          /* record with 32bit address         */
+      nBytesOnLine -= 5;
+      nAddr = GetHex(f,8);              /* get address for bytes             */
+      goto data16bit;
+    /* S5/S6 records ignored; don't think they make any sense here           */
+    case '5' :
+    case '6' :
+      break;
+    case '7' :                          /* 32-bit entry point                */
+      nAddr = GetHex(f, 8);             /* get address to jump to            */
+      goto entry16bit;
+    case '8' :                          /* 24-bit entry point                */
+      nAddr = GetHex(f, 6);             /* get address to jump to            */
+      goto entry16bit;
     case '9' :
       nAddr = GetHex(f, 4);             /* get address to jump to            */
+    entry16bit:
       if ((nAddr < 0) || (nAddr >= 0x10000)) /* if illegal address           */
         { nBytes = -1; break; }         /* return with error                 */
+      /* the documentation says "if address isn't needed, use 0".
+       * bad idea IMO (they should have allowed to pass NO address instead),
+       * but, well ... 0 MIGHT be a valid start address, so we need to live
+       * with the ambiguity. */
       load = nAddr;
       done = 1;
       break;
@@ -163,6 +190,10 @@ while ((!done) &&
       done = 1;
       break;
     }
+
+  /* ignore checksum byte; its calculation would be:
+     add up all decoded bytes after the record type,
+     take 1's complement of lowest byte */
 
   while (((c = fgetc(f)) != EOF) &&     /* skip to newline                   */
          (c != '\r') && (c != '\n'))

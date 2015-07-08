@@ -96,13 +96,16 @@ return out;
 /* IsHex : tries to load as an Intel HEX file                                */
 /*****************************************************************************/
 
-int IsHex(FILE *f, byte *memory, unsigned *pbegin, unsigned *pend)
+int IsHex(FILE *f, byte *memory, unsigned *pbegin, unsigned *pend, int *pload)
 {
 int nCurPos = ftell(f);
-int c = 0;
+int c = 0, rectype;
 int nBytes = 0;
+int done = 0;
 int begin = 0xffff;
 int end = 0;
+int segment = 0;                        /* segment address                   */
+int load = -1;
 
 if ((c = fgetc(f)) == EOF)              /* look whether starting with ':'    */
   return FALSE;
@@ -110,7 +113,8 @@ fseek(f, nCurPos, SEEK_SET);
 if (c != ':')
   return FALSE;
 
-while ((nBytes >= 0) &&
+while ((!done) &&
+       (nBytes >= 0) &&
        (fread(&c, 1, 1, f)))            /* while there are lines             */
   {
   int nBytesOnLine, nAddr, i;
@@ -121,7 +125,7 @@ while ((nBytes >= 0) &&
     { nBytes = -1; break; }             /* return with error                 */
   else if (nBytesOnLine == 0)           /* if end of file                    */
     break;                              /* just break;                       */
-  nAddr = GetHex(f,4);                  /* get address for bytes             */
+  nAddr = GetHex(f,4) + segment;        /* get address for bytes             */
   if ((nAddr < 0) || (nAddr >= 0x10000)) /* if illegal address               */
     { nBytes = -1; break; }             /* return with error                 */
   if (nAddr < begin)                    /* adjust start and end values       */
@@ -129,14 +133,53 @@ while ((nBytes >= 0) &&
   if (nAddr + nBytesOnLine - 1 > end)
     end = nAddr + nBytesOnLine - 1;
   nBytes += nBytesOnLine;
-  c = GetHex(f, 2);                     /* skip a character                  */
-  for (i = 0; i < nBytesOnLine; i++)    /* now get the bytes                 */
+  rectype = GetHex(f, 2);               /* fetch record type character       */
+  switch (rectype)                      /* which type of record is this?     */
     {
-    c = GetHex(f, 2);                   /* retrieve a byte                   */
-    if ((c < 0) || (c > 0xff))          /* if illegal byte                   */
-      { nBytes = -1; break; }           /* return with error                 */
-    memory[nAddr + i] = (byte)c;        /* otherwise add memory byte         */
-    ATTRBYTE(nAddr + i) |= 0x80;        /* mark as used byte                 */
+    case 0 :                            /* data record                       */
+      for (i = 0; i<nBytesOnLine; i++)  /* now get the bytes                 */
+        {
+        c = GetHex(f, 2);               /* retrieve a byte                   */
+        if ((c < 0) || (c > 0xff))      /* if illegal byte                   */
+          { nBytes = -1; break; }       /* return with error                 */
+        memory[nAddr + i] = (byte)c;    /* otherwise add memory byte         */
+        ATTRBYTE(nAddr + i) |= 0x80;    /* mark as used byte                 */
+        }
+      break;
+    case 1 :                            /* End Of File record                */
+      done = 1;
+      break;
+    case 2 :                            /* Extended Segment Address          */
+      segment = GetHex(f, 4);           /* get segment value to use          */
+      segment <<= 4;                    /* convert to linear addition value  */
+      if (segment < 0 || segment >= 0x10000)
+        nBytes = -1;                    /* stop processing                   */
+      break;
+    case 3 :                            /* Start Segment Address             */
+      segment = GetHex(f, 4);           /* get segment value to use          */
+      segment <<= 4;                    /* convert to linear addition value  */
+      nAddr = GetHex(f, 4) + segment;   /* get start instruction pointer     */
+      if ((nAddr < 0) || (nAddr >= 0x10000)) /* if illegal address           */
+        nBytes = -1;                    /* return with error                 */
+      else
+        load = nAddr;
+      break;
+    case 4 :                            /* Extended Linear Address           */
+      segment = GetHex(f, 4);           /* get segment value to use          */
+      segment <<= 16;                   /* convert to linear addition value  */
+      if (segment < 0 || segment >= 0x10000)
+        nBytes = -1;                    /* stop processing                   */
+      break;
+    case 5 :                            /* Start Linear Address              */
+      nAddr = GetHex(f, 8);             /* get start instruction pointer     */
+      if ((nAddr < 0) || (nAddr >= 0x10000)) /* if illegal address           */
+        nBytes = -1;                    /* return with error                 */
+      else
+        load = nAddr;
+      break;
+    default :                           /* anything else?                    */
+      nBytes = -1;                      /* unknown format. stop processing   */
+      break;
     }
 
   while (((c = fgetc(f)) != EOF) &&     /* skip to newline                   */
@@ -239,8 +282,8 @@ if (outname)
   if (!out)
     printf("can't open %s \n",outname);
   }
-
-if ((IsHex(f, memory, &begin, &end)) && /* if an Intel HEX file              */
+                                        /* if an Intel HEX file              */
+if ((IsHex(f, memory, &begin, &end, &load)) &&
     (out != stdout))
   fwrite(memory + begin, end - begin + 1, 1, out);
 

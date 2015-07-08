@@ -89,9 +89,10 @@
                     *   CVEC/DVEC declare code/data vector fields
                         if not declared already, they will be auto-inserted into label list
                     *   noLabelLoad option suppresses adding of load-address label
+   V1.72 2015-07-08 Intel and Motorola Hex file parsing improved
 */
 
-#define ID  "1.71"
+#define ID  "1.72"
 
 #if RB_VARIANT
 #define VERSION ID "-RB"
@@ -3683,13 +3684,16 @@ return out;
 /* IsIntelHex : tries to load as an Intel HEX file                           */
 /*****************************************************************************/
 
-int IsIntelHex(FILE *f, byte *memory, unsigned *pbegin, unsigned *pend)
+int IsIntelHex(FILE *f, byte *memory, unsigned *pbegin, unsigned *pend, int *pload)
 {
 int nCurPos = ftell(f);
-int c = 0;
+int c = 0, rectype;
+int done = 0;
 int nBytes = 0;
 int begin = 0xffff;
 int end = 0;
+int segment = 0;                        /* segment address                   */
+int load = -1;
 
 if ((c = fgetc(f)) == EOF)              /* look whether starting with ':'    */
   return FALSE;
@@ -3697,7 +3701,8 @@ fseek(f, nCurPos, SEEK_SET);
 if (c != ':')
   return FALSE;
 
-while ((nBytes >= 0) &&
+while ((!done) &&
+       (nBytes >= 0) &&
        (fread(&c, 1, 1, f)))            /* while there are lines             */
   {
   int nBytesOnLine, nAddr, i;
@@ -3708,7 +3713,7 @@ while ((nBytes >= 0) &&
     { nBytes = -1; break; }             /* return with error                 */
   else if (nBytesOnLine == 0)           /* if end of file                    */
     break;                              /* just break;                       */
-  nAddr = GetHex(f,4);                  /* get address for bytes             */
+  nAddr = GetHex(f,4) + segment;        /* get address for bytes             */
   if ((nAddr < 0) || (nAddr >= 0x10000)) /* if illegal address               */
     { nBytes = -1; break; }             /* return with error                 */
   if (nAddr < begin)                    /* adjust start and end values       */
@@ -3716,16 +3721,59 @@ while ((nBytes >= 0) &&
   if (nAddr + nBytesOnLine - 1 > end)
     end = nAddr + nBytesOnLine - 1;
   nBytes += nBytesOnLine;
-  c = GetHex(f, 2);                     /* skip a character                  */
-  for (i = 0; i < nBytesOnLine; i++)    /* now get the bytes                 */
+  rectype = GetHex(f, 2);               /* fetch record type character       */
+  switch (rectype)                      /* which type of record is this?     */
     {
-    c = GetHex(f, 2);                   /* retrieve a byte                   */
-    if ((c < 0) || (c > 0xff))          /* if illegal byte                   */
-      { nBytes = -1; break; }           /* return with error                 */
-    memory[nAddr + i] = (byte)c;        /* otherwise add memory byte         */
-    SET_USED(nAddr + i);                /* mark as used byte                 */
-    ATTRBYTE(nAddr + i) |= defaultDataType;
+    case 0 :                            /* data record                       */
+      for (i = 0; i<nBytesOnLine; i++)  /* now get the bytes                 */
+        {
+        c = GetHex(f, 2);               /* retrieve a byte                   */
+        if ((c < 0) || (c > 0xff))      /* if illegal byte                   */
+          { nBytes = -1; break; }       /* return with error                 */
+        memory[nAddr + i] = (byte)c;    /* otherwise add memory byte         */
+        SET_USED(nAddr + i);            /* mark as used byte                 */
+        ATTRBYTE(nAddr + i) |= defaultDataType;
+        }
+      break;
+    case 1 :                            /* End Of File record                */
+      done = 1;
+      break;
+    case 2 :                            /* Extended Segment Address          */
+      segment = GetHex(f, 4);           /* get segment value to use          */
+      segment <<= 4;                    /* convert to linear addition value  */
+      if (segment < 0 || segment >= 0x10000)
+        nBytes = -1;                    /* stop processing                   */
+      break;
+    case 3 :                            /* Start Segment Address             */
+      segment = GetHex(f, 4);           /* get segment value to use          */
+      segment <<= 4;                    /* convert to linear addition value  */
+      nAddr = GetHex(f, 4) + segment;   /* get start instruction pointer     */
+      if ((nAddr < 0) || (nAddr >= 0x10000)) /* if illegal address           */
+        nBytes = -1;                    /* return with error                 */
+      else
+        load = nAddr;
+      break;
+    case 4 :                            /* Extended Linear Address           */
+      segment = GetHex(f, 4);           /* get segment value to use          */
+      segment <<= 16;                   /* convert to linear addition value  */
+      if (segment < 0 || segment >= 0x10000)
+        nBytes = -1;                    /* stop processing                   */
+      break;
+    case 5 :                            /* Start Linear Address              */
+      nAddr = GetHex(f, 8);             /* get start instruction pointer     */
+      if ((nAddr < 0) || (nAddr >= 0x10000)) /* if illegal address           */
+        nBytes = -1;                    /* return with error                 */
+      else
+        load = nAddr;
+      break;
+    default :                           /* anything else?                    */
+      nBytes = -1;                      /* unknown format. stop processing   */
+      break;
     }
+
+  /* ignore checksum byte; its calculation would be:
+     add up all decoded bytes after the ':',
+     take 2's complement of lowest byte */
 
   while (((c = fgetc(f)) != EOF) &&     /* skip to newline                   */
          (c != '\r') && (c != '\n'))
@@ -3745,6 +3793,8 @@ if (nBytes >= 0)
     *pbegin = begin;
   if (end > (int)*pend)
     *pend = end;
+  if (load >= 0)
+    *pload = load;
   }
 
 if (nBytes > 0)
@@ -3788,13 +3838,17 @@ while ((!done) &&
   switch (nLineType)                    /* now examine line type             */
     {
     case '0' :
+#if 0                                   /* simply ignore the rest of the line*/
       nBytesOnLine--;
       while (nBytesOnLine--)
         GetHex(f, 2);
+#endif
       break;
-    case '1' :
+    case '1' :                          /* record with 16bit address         */
       nBytesOnLine -= 3;
       nAddr = GetHex(f,4);              /* get address for bytes             */
+    data16bit:
+      /* this program only deals with 16bit data, so restrict to 0-$FFFF     */
       if ((nAddr < 0) || (nAddr >= 0x10000)) /* if illegal address           */
         { nBytes = -1; break; }         /* return with error                 */
       if (nAddr < begin)                /* adjust start and end values       */
@@ -3813,10 +3867,34 @@ while ((!done) &&
         ATTRBYTE(nAddr + i) |= defaultDataType;
         }
       break;
+    case '2' :                          /* record with 24bit address         */
+      nBytesOnLine -= 4;
+      nAddr = GetHex(f,6);              /* get address for bytes             */
+      goto data16bit;
+    case '3' :                          /* record with 32bit address         */
+      nBytesOnLine -= 5;
+      nAddr = GetHex(f,8);              /* get address for bytes             */
+      goto data16bit;
+    /* S5/S6 records ignored; don't think they make any sense here           */
+    case '5' :
+    case '6' :
+      break;
+    case '7' :                          /* 32-bit entry point                */
+      nAddr = GetHex(f, 8);             /* get address to jump to            */
+      goto entry16bit;
+    case '8' :                          /* 24-bit entry point                */
+      nAddr = GetHex(f, 6);             /* get address to jump to            */
+      goto entry16bit;
     case '9' :
       nAddr = GetHex(f, 4);             /* get address to jump to            */
+    entry16bit:
+      /* this program only deals with 16bit data, so restrict to 0-$FFFF     */
       if ((nAddr < 0) || (nAddr >= 0x10000)) /* if illegal address           */
         { nBytes = -1; break; }         /* return with error                 */
+      /* the documentation says "if address isn't needed, use 0".
+       * bad idea IMO (they should have allowed to pass NO address instead),
+       * but, well ... 0 MIGHT be a valid start address, so we need to live
+       * with the ambiguity. */
       load = nAddr;
       done = 1;
       break;
@@ -3824,6 +3902,10 @@ while ((!done) &&
       done = 1;
       break;
     }
+
+  /* ignore checksum byte; its calculation would be:
+     add up all decoded bytes after the record type,
+     take 1's complement of lowest byte */
 
   while (((c = fgetc(f)) != EOF) &&     /* skip to newline                   */
          (c != '\r') && (c != '\n'))
@@ -3869,7 +3951,7 @@ if (!f)
                                         /* if not a FLEX binary              */
 if ((!IsFlex(f, memory, pbegin, pend, pload)) &&
                                         /* and not an Intel HEX file         */
-    (!IsIntelHex(f, memory, pbegin, pend)) &&
+    (!IsIntelHex(f, memory, pbegin, pend, pload)) &&
                                         /* and not a Motorola HEX file       */
     (!IsMotorolaHex(f, memory, pbegin, pend, pload)))
   {                                     /* load as normal binary image       */
