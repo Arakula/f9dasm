@@ -89,12 +89,12 @@
                     *   CVEC/DVEC declare code/data vector fields
                         if not declared already, they will be auto-inserted into label list
                     *   noLabelLoad option suppresses adding of load-address label
-   V1.72 2015-07-03 (RB) 6301 option added
+   V1.72 2015-07-09 (RB) 6301 option added
                     *   like 6801/03 but with some 6809-specific commands (AIM/EIM/OIM/TIM) and addressing modes (BE/BI)
                     *   additional opcodes SLP and XGDX
 */
 
-#define ID  "1.71"
+#define ID  "1.72"
 
 #if RB_VARIANT
 #define VERSION ID "-RB"
