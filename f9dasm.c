@@ -327,6 +327,7 @@ static struct
   { "comment",   OPTION_COMMENT },
   { "nocomment", OPTION_NOCOMMENT },
   { "6301",      OPTION_6301 },
+  { "6303",      OPTION_6301 },
   { "6309",      OPTION_6309 },
   { "6800",      OPTION_6800 },
   { "6801",      OPTION_6801 },
