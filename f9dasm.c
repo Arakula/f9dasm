@@ -90,9 +90,12 @@
                         if not declared already, they will be auto-inserted into label list
                     *   noLabelLoad option suppresses adding of load-address label
    V1.72 2015-07-08 Intel and Motorola Hex file parsing improved
+   V1.73 2015-07-09 (RB) 6301 option added
+                    *   like 6801/03 but with some 6809-specific commands (AIM/EIM/OIM/TIM) and addressing modes (BE/BI)
+                    *   additional opcodes SLP and XGDX
 */
 
-#define ID  "1.72"
+#define ID  "1.73"
 
 #if RB_VARIANT
 #define VERSION ID "-RB"
@@ -293,6 +296,7 @@ enum                                    /* available options                 */
   OPTION_6809,
   OPTION_LDCHAR,
   OPTION_NOLOADLABEL,
+  OPTION_6301,
   };
 
 static struct
@@ -323,6 +327,8 @@ static struct
   { "nodec",     OPTION_NODEC },
   { "comment",   OPTION_COMMENT },
   { "nocomment", OPTION_NOCOMMENT },
+  { "6301",      OPTION_6301 },
+  { "6303",      OPTION_6301 },
   { "6309",      OPTION_6309 },
   { "6800",      OPTION_6800 },
   { "6801",      OPTION_6801 },
@@ -398,8 +404,12 @@ enum opcodes
   _cpx,
   /* 6801/6803 extra opcodes */
   _pulx, _pshx,
+  /* 6301/03 extra opcodes */
+  _slp, _xgdx,
+  /* 630x extra opcodes */
+  _aim,  _eim,  _oim,  _tim,  
   /* 6309 extra opcodes */
-  _aim,  _eim,  _oim,  _tim,  _band, _biand,_bor,  _bior, _beor,
+  _band, _biand,_bor,  _bior, _beor,
   _bieor,_ldbt, _stbt, _tfm,  _adcd, _adcr, _adde, _addf, _addw,
   _addr, _andd, _andr, _asld, _asrd, _bitd, _bitmd,_clrd, _clre,
   _clrf, _clrw, _cmpe, _cmpf, _cmpw, _cmpr, _comd, _come, _comf,
@@ -581,11 +591,15 @@ struct
   /* 6801/6803 EXTRA OPCODES */
     { "PULX",  0 },                     /* _pulx                             */
     { "PSHX",  0 },                     /* _pshx                             */
-  /* 6309 EXTRA OPCODES */
+  /* 6301/03 EXTRA OPCODES */
+    { "SLP",   0 },                     /* _slp                              */
+    { "XGDX",  0 },                     /* _xgdx                             */
+  /* 630x EXTRA OPCODES */
     { "AIM",   0 },                     /* _aim                              */
     { "EIM",   0 },                     /* _eim                              */
     { "OIM",   0 },                     /* _oim                              */
     { "TIM",   0 },                     /* _tim                              */
+  /* 6309 EXTRA OPCODES */
     { "BAND",  0 },                     /* _band                             */
     { "BIAND", 0 },                     /* _biand                            */
     { "BOR",   0 },                     /* _bor                              */
@@ -837,6 +851,74 @@ byte m6801_codes[512] =
   _neg  ,_ext,   _ill  ,_nom,   _ill  ,_nom,   _com  ,_ext,     /* 70..73 */
   _lsr  ,_ext,   _ill  ,_nom,   _ror  ,_ext,   _asr  ,_ext,     /* 74..77 */
   _asl  ,_ext,   _rol  ,_ext,   _dec  ,_ext,   _ill  ,_nom,     /* 78..7B */
+  _inc  ,_ext,   _tst  ,_ext,   _jmp  ,_ext,   _clr  ,_ext,     /* 7C..7F */
+  _suba ,_imb,   _cmpa ,_imb,   _sbca ,_imb,   _subd ,_imw,     /* 80..83 */
+  _anda ,_imb,   _bita ,_imb,   _lda  ,_imb,   _ill  ,_nom,     /* 84..87 */
+  _eora ,_imb,   _adca ,_imb,   _ora  ,_imb,   _adda ,_imb,     /* 88..8B */
+  _cpx  ,_imw,   _bsr  ,_reb,   _lds  ,_imw,   _ill  ,_nom,     /* 8C..8F */
+  _suba ,_dir,   _cmpa ,_dir,   _sbca ,_dir,   _subd ,_dir,     /* 90..93 */
+  _anda ,_dir,   _bita ,_dir,   _lda  ,_dir,   _sta  ,_dir,     /* 94..97 */
+  _eora ,_dir,   _adca ,_dir,   _ora  ,_dir,   _adda ,_dir,     /* 98..9B */
+  _cpx  ,_dir,   _jsr  ,_dir,   _lds  ,_dir,   _sts  ,_dir,     /* 9C..9F */
+  _suba ,_ix8,   _cmpa ,_ix8,   _sbca ,_ix8,   _subd ,_ix8,     /* A0..A3 */
+  _anda ,_ix8,   _bita ,_ix8,   _lda  ,_ix8,   _sta  ,_ix8,     /* A4..A7 */
+  _eora ,_ix8,   _adca ,_ix8,   _ora  ,_ix8,   _adda ,_ix8,     /* A8..AB */
+  _cpx  ,_ix8,   _jsr  ,_ix8,   _lds  ,_ix8,   _sts  ,_ix8,     /* AC..AF */
+  _suba ,_ext,   _cmpa ,_ext,   _sbca ,_ext,   _subd ,_ext,     /* B0..B3 */
+  _anda ,_ext,   _bita ,_ext,   _lda  ,_ext,   _sta  ,_ext,     /* B4..B7 */
+  _eora ,_ext,   _adca ,_ext,   _ora  ,_ext,   _adda ,_ext,     /* B8..BB */
+  _cpx  ,_ext,   _jsr  ,_ext,   _lds  ,_ext,   _sts  ,_ext,     /* BC..BF */
+  _subb ,_imb,   _cmpb ,_imb,   _sbcb ,_imb,   _addd ,_imw,     /* C0..C3 */
+  _andb ,_imb,   _bitb ,_imb,   _ldb  ,_imb,   _ill  ,_nom,     /* C4..C7 */
+  _eorb ,_imb,   _adcb ,_imb,   _orb  ,_imb,   _addb ,_imb,     /* C8..CB */
+  _ldd  ,_imw,   _ill  ,_nom,   _ldx  ,_imw,   _ill  ,_nom,     /* CC..CF */
+  _subb ,_dir,   _cmpb ,_dir,   _sbcb ,_dir,   _addd ,_dir,     /* D0..D3 */
+  _andb ,_dir,   _bitb ,_dir,   _ldb  ,_dir,   _stb  ,_dir,     /* D4..D7 */
+  _eorb ,_dir,   _adcb ,_dir,   _orb  ,_dir,   _addb ,_dir,     /* D8..DB */
+  _ldd  ,_dir,   _std  ,_dir,   _ldx  ,_dir,   _stx  ,_dir,     /* DC..DF */
+  _subb ,_ix8,   _cmpb ,_ix8,   _sbcb ,_ix8,   _addd ,_ix8,     /* E0..E3 */
+  _andb ,_ix8,   _bitb ,_ix8,   _ldb  ,_ix8,   _stb  ,_ix8,     /* E4..E7 */
+  _eorb ,_ix8,   _adcb ,_ix8,   _orb  ,_ix8,   _addb ,_ix8,     /* E8..EB */
+  _ldd  ,_ix8,   _std  ,_ix8,   _ldx  ,_ix8,   _stx  ,_ix8,     /* EC..EF */
+  _subb ,_ext,   _cmpb ,_ext,   _sbcb ,_ext,   _addd ,_ext,     /* F0..F3 */
+  _andb ,_ext,   _bitb ,_ext,   _ldb  ,_ext,   _stb  ,_ext,     /* F4..F7 */
+  _eorb ,_ext,   _adcb ,_ext,   _orb  ,_ext,   _addb ,_ext,     /* F8..FB */
+  _ldd  ,_ext,   _std  ,_ext,   _ldx  ,_ext,   _stx  ,_ext,     /* FC..FF */
+  };
+
+byte m6301_codes[512] =
+  {
+  _ill  ,_nom,   _nop  ,_imp,   _ill  ,_nom,   _ill  ,_nom,     /* 00..03 */
+  _lsrd ,_imp,   _asld ,_imp,   _tap  ,_imp,   _tpa  ,_imp,     /* 04..07 */
+  _inx  ,_imp,   _dex  ,_imp,   _clv  ,_imp,   _sev  ,_imp,     /* 08..0B */
+  _clc  ,_imp,   _sec  ,_imp,   _cli  ,_imp,   _sei  ,_imp,     /* 0C..0F */
+  _sba  ,_imp,   _cba  ,_imp,   _ill  ,_nom,   _ill  ,_nom,     /* 10..13 */
+  _ill  ,_nom,   _ill  ,_nom,   _tab  ,_imp,   _tba  ,_imp,     /* 14..17 */
+  _xgdx ,_imp,   _daa  ,_imp,   _slp  ,_imp,   _aba  ,_imp,     /* 18..1B: extra 0x18/xgdx, 0x1a/slp */  
+  _ill  ,_nom,   _ill  ,_nom,   _ill  ,_nom,   _ill  ,_nom,     /* 1C..1F */
+  _bra  ,_reb,   _brn  ,_reb,   _bhi  ,_reb,   _bls  ,_reb,     /* 20..23 */
+  _bcc  ,_reb,   _bcs  ,_reb,   _bne  ,_reb,   _beq  ,_reb,     /* 24..27 */
+  _bvc  ,_reb,   _bvs  ,_reb,   _bpl  ,_reb,   _bmi  ,_reb,     /* 28..2B */
+  _bge  ,_reb,   _blt  ,_reb,   _bgt  ,_reb,   _ble  ,_reb,     /* 2C..2F */
+  _tsx  ,_imp,   _ins  ,_imp,   _pula ,_imp,   _pulb ,_imp,     /* 30..33 */
+  _des  ,_imp,   _txs  ,_imp,   _psha ,_imp,   _pshb ,_imp,     /* 34..37 */
+  _pulx ,_imp,   _rts  ,_imp,   _abx  ,_imp,   _rti  ,_imp,     /* 38..3B */
+  _pshx ,_imp,   _mul  ,_imp,   _wai  ,_imp,   _swi  ,_imp,     /* 3C..3F */
+  _nega ,_imp,   _ill  ,_nom,   _ill  ,_nom,   _coma ,_imp,     /* 40..43 */
+  _lsra ,_imp,   _ill  ,_nom,   _rora ,_imp,   _asra ,_imp,     /* 44..47 */
+  _asla ,_imp,   _rola ,_imp,   _deca ,_imp,   _ill  ,_nom,     /* 48..4B */
+  _inca ,_imp,   _tsta ,_imp,   _ill  ,_nom,   _clra ,_imp,     /* 4C..4F */
+  _negb ,_imp,   _ill  ,_nom,   _ill  ,_nom,   _comb ,_imp,     /* 50..53 */
+  _lsrb ,_imp,   _ill  ,_nom,   _rorb ,_imp,   _asrb ,_imp,     /* 54..57 */
+  _aslb ,_imp,   _rolb ,_imp,   _decb ,_imp,   _ill  ,_nom,     /* 58..5B */
+  _incb ,_imp,   _tstb ,_imp,   _ill  ,_nom,   _clrb ,_imp,     /* 5C..5F */
+  _neg  ,_ix8,   _aim  ,_bi,    _oim  ,_bi,    _com  ,_ix8,     /* 60..63: extra 0x62/aim, 0x63/oim */
+  _lsr  ,_ix8,   _eim  ,_bi,    _ror  ,_ix8,   _asr  ,_ix8,     /* 64..67: extra 0x65/eim */
+  _asl  ,_ix8,   _rol  ,_ix8,   _dec  ,_ix8,   _tim  ,_bi,      /* 68..6B: extra 0x6b/tim */
+  _inc  ,_ix8,   _tst  ,_ix8,   _jmp  ,_ix8,   _clr  ,_ix8,     /* 6C..6F */
+  _neg  ,_ext,   _aim  ,_be,    _oim  ,_be,    _com  ,_ext,     /* 70..73: extra 0x72/aim, 0x73/oim */
+  _lsr  ,_ext,   _eim  ,_be,    _ror  ,_ext,   _asr  ,_ext,     /* 74..77: extra 0x75/eim */
+  _asl  ,_ext,   _rol  ,_ext,   _dec  ,_ext,   _tim  ,_be,      /* 78..7B: extra 0x7b/tim */
   _inc  ,_ext,   _tst  ,_ext,   _jmp  ,_ext,   _clr  ,_ext,     /* 7C..7F */
   _suba ,_imb,   _cmpa ,_imb,   _sbca ,_imb,   _subd ,_imw,     /* 80..83 */
   _anda ,_imb,   _bita ,_imb,   _lda  ,_imb,   _ill  ,_nom,     /* 84..87 */
@@ -3170,6 +3252,7 @@ printf("Usage: f9dasm [options] <filename>\n"
        " -hex       - with hex dump (default)\n"
        " -nohex     - no hex dump\n"
        " -x         - use 6309 opcodes (old style)\n"
+       " -6301      - use 6301/6303 opcodes\n"
        " -6309      - use 6309 opcodes\n"
        " -6800      - use 6800/6802/6808 opcodes\n"
        " -6801      - use 6801/6803 opcodes\n"
@@ -3257,6 +3340,23 @@ switch (j)
   case OPTION_NOHEX :
     showhex = FALSE;
     break;
+
+  case OPTION_6301 :
+    mnemo[_lda].mne   = "LDAA";         /* adjust slight mnemo differences   */
+    mnemo[_ldb].mne   = "LDAB";
+    mnemo[_sta].mne   = "STAA";
+    mnemo[_stb].mne   = "STAB";
+    mnemo[_ora].mne   = "ORAA";
+    mnemo[_orb].mne   = "ORAB";
+
+    codes             = m6301_codes;
+    codes10           = NULL;
+    codes11           = NULL;
+    exg_tfr           = m6809_exg_tfr;
+    dirpage           = 0;
+    useConvenience    = FALSE;
+    break;
+
   case OPTION_6309 :
     mnemo[_lda].mne   = "LDA";          /* adjust slight mnemo differences   */
     mnemo[_ldb].mne   = "LDB";
@@ -3271,6 +3371,7 @@ switch (j)
     exg_tfr           = h6309_exg_tfr;
     allow_6309_codes  = TRUE;
     break;
+
   case OPTION_6800 :
     mnemo[_lda].mne   = "LDAA";         /* adjust slight mnemo differences   */
     mnemo[_ldb].mne   = "LDAB";
@@ -3286,6 +3387,7 @@ switch (j)
     dirpage           = 0;              /* 6800 uses DP 0, fixed             */
     useConvenience    = FALSE;          /* NO Convenience ops!               */
     break;
+
   case OPTION_6801 :
     mnemo[_lda].mne   = "LDAA";         /* adjust slight mnemo differences   */
     mnemo[_ldb].mne   = "LDAB";
@@ -3301,6 +3403,7 @@ switch (j)
     dirpage           = 0;
     useConvenience    = FALSE;
     break;
+
   case OPTION_6809 :
     mnemo[_lda].mne   = "LDA";          /* adjust slight mnemo differences   */
     mnemo[_ldb].mne   = "LDB";
