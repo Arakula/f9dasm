@@ -38,7 +38,7 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName=".\mot2bin___Win32_Release/mot2bin.tlb"
+				TypeLibraryName="$(OutDir)\mot2bin.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -49,10 +49,10 @@
 				StringPooling="true"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
-				PrecompiledHeaderFile=".\mot2bin___Win32_Release/mot2bin.pch"
-				AssemblerListingLocation=".\mot2bin___Win32_Release/"
-				ObjectFile=".\mot2bin___Win32_Release/"
-				ProgramDataBaseFileName=".\mot2bin___Win32_Release/"
+				PrecompiledHeaderFile="$(IntDir)\mot2bin.pch"
+				AssemblerListingLocation="$(IntDir)\"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="$(IntDir)\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 			/>
@@ -69,10 +69,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile=".\Release/mot2bin.exe"
+				OutputFile="$(OutDir)\mot2bin.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				ProgramDatabaseFile=".\Release/mot2bin.pdb"
+				ProgramDatabaseFile="$(OutDir)\mot2bin.pdb"
 				SubSystem="1"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
@@ -90,7 +90,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\mot2bin___Win32_Release/mot2bin.bsc"
+				OutputFile="$(IntDir)\mot2bin.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -104,7 +104,7 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory=".\mot2bin___Win32_Debug"
+			OutputDirectory=".\Debug"
 			IntermediateDirectory=".\mot2bin___Win32_Debug"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
@@ -126,7 +126,7 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName=".\mot2bin___Win32_Debug/mot2bin.tlb"
+				TypeLibraryName="$(OutDir)\mot2bin.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -136,10 +136,10 @@
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
-				PrecompiledHeaderFile=".\mot2bin___Win32_Debug/mot2bin.pch"
-				AssemblerListingLocation=".\mot2bin___Win32_Debug/"
-				ObjectFile=".\mot2bin___Win32_Debug/"
-				ProgramDataBaseFileName=".\mot2bin___Win32_Debug/"
+				PrecompiledHeaderFile="$(IntDir)\mot2bin.pch"
+				AssemblerListingLocation="$(IntDir)\"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="$(IntDir)\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="4"
@@ -157,11 +157,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile=".\Debug/mot2bin.exe"
+				OutputFile="$(OutDir)\mot2bin.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile=".\Debug/mot2bin.pdb"
+				ProgramDatabaseFile="$(OutDir)\mot2bin.pdb"
 				SubSystem="1"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
@@ -179,7 +179,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\mot2bin___Win32_Debug/mot2bin.bsc"
+				OutputFile="$(IntDir)\mot2bin.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
