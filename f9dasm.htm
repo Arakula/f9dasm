@@ -4,7 +4,7 @@
 </head>
 <body>
 
-<h1>F9DASM - 6800/6801/6802/6803/6808/6809 / 6309 Disassembler</h1>
+<h1>F9DASM - 6800/6801/6802/6803/6808/6809 / 6301/6303/6309 Disassembler</h1>
 
 <p align="right">Copyright (c) 2000 Arto Salmi<br>
 Parts Copyright (c) 2001-2015 Hermann Seib<br>
@@ -62,6 +62,8 @@ program, I've added this documentation. Have fun!</p>
   <dd>puts disassembler in 6800/6802/6808 mode (default is 6809).</dd>
   <dt><b>-6801</b>, <b>-6803</b></dt>
   <dd>puts disassembler in 6801/6803 mode (default is 6809).</dd>
+  <dt><b>-6301</b>, <b>-6303</b></dt>
+  <dd>puts disassembler in 6301/6303 mode (default is 6809).</dd>
   <dt><b>-os9</b></dt>
   <dd>using this flag, the disassembler tries to convert swi2 to the
       corresponding OS/9 calls.</dd>
@@ -269,6 +271,14 @@ Anything following an asterisk (<b>*</b>) is interpreted as a comment.</p>
       If your Assembler of choice can't do it, all you can do is to cut the binary
       in slices, use the <b>-offset</b> command line option to disassemble them,
       and merge the generated assembler source files by hand.</dd>
+  <dt><b>cvec[tor] <i>addr[-addr]</i></b></dt>
+  <dd>defines a <i>code vector</i> area (a table of code addresses).<br>
+      Works like <b>word <i>addr[-addr]</i></b>, but also defines code labels for
+	  the addresses if necessary</dd>
+  <dt><b>dvec[tor] <i>addr[-addr]</i></b></dt>
+  <dd>defines a <i>data vector</i> area (a table of data addresses).<br>
+      Works like <b>word <i>addr[-addr]</i></b>, but also defines data labels for
+	  the addresses if necessary</dd>
   <dt><b>end</b></dt>
   <dd>Terminates processing of this info file at once.</dd>
 
