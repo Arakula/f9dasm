@@ -912,13 +912,13 @@ byte m6301_codes[512] =
   _lsrb ,_imp,   _ill  ,_nom,   _rorb ,_imp,   _asrb ,_imp,     /* 54..57 */
   _aslb ,_imp,   _rolb ,_imp,   _decb ,_imp,   _ill  ,_nom,     /* 58..5B */
   _incb ,_imp,   _tstb ,_imp,   _ill  ,_nom,   _clrb ,_imp,     /* 5C..5F */
-  _neg  ,_ix8,   _aim  ,_bi,    _oim  ,_bi,    _com  ,_ix8,     /* 60..63: extra 0x62/aim, 0x63/oim */
+  _neg  ,_ix8,   _aim  ,_bi,    _oim  ,_bi,    _com  ,_ix8,     /* 60..63: extra 0x61/aim, 0x62/oim */
   _lsr  ,_ix8,   _eim  ,_bi,    _ror  ,_ix8,   _asr  ,_ix8,     /* 64..67: extra 0x65/eim */
   _asl  ,_ix8,   _rol  ,_ix8,   _dec  ,_ix8,   _tim  ,_bi,      /* 68..6B: extra 0x6b/tim */
   _inc  ,_ix8,   _tst  ,_ix8,   _jmp  ,_ix8,   _clr  ,_ix8,     /* 6C..6F */
-  _neg  ,_ext,   _aim  ,_be,    _oim  ,_be,    _com  ,_ext,     /* 70..73: extra 0x72/aim, 0x73/oim */
-  _lsr  ,_ext,   _eim  ,_be,    _ror  ,_ext,   _asr  ,_ext,     /* 74..77: extra 0x75/eim */
-  _asl  ,_ext,   _rol  ,_ext,   _dec  ,_ext,   _tim  ,_be,      /* 78..7B: extra 0x7b/tim */
+  _neg  ,_ext,   _aim  ,_bd,    _oim  ,_bd,    _com  ,_ext,     /* 70..73: extra 0x71/aim, 0x72/oim */
+  _lsr  ,_ext,   _eim  ,_bd,    _ror  ,_ext,   _asr  ,_ext,     /* 74..77: extra 0x75/eim */
+  _asl  ,_ext,   _rol  ,_ext,   _dec  ,_ext,   _tim  ,_bd,      /* 78..7B: extra 0x7b/tim */
   _inc  ,_ext,   _tst  ,_ext,   _jmp  ,_ext,   _clr  ,_ext,     /* 7C..7F */
   _suba ,_imb,   _cmpa ,_imb,   _sbca ,_imb,   _subd ,_imw,     /* 80..83 */
   _anda ,_imb,   _bita ,_imb,   _lda  ,_imb,   _ill  ,_nom,     /* 84..87 */
@@ -5078,6 +5078,10 @@ for(; pc<=0xfffe; pc+=2)
  * there, "spillover" from other banks might occur -- between banked and static code even within an instruction. 
  * quite a special occurrence, agreed, but I added a "noLoadLabel" option (default: FALSE) for such cases
  * 
+ * HS: I've been thinking... there's another reason where it's good to have
+ * "noLoadLabel". Motorola S-Files always have an entry point address;
+ * default is 0 (which is ambiguous, since 0 might be the start address as well).
+ *
  */
 if ( (load >= 0) && (noLoadLabel == FALSE) )
   AddLabel(_jmp, (word)load);
