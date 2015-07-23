@@ -84,7 +84,7 @@
                     automatically inserts 
                     *   system vectors as word-data labels
                     *   entry points as code labels
-   V1.70 2015-07-03 phase addr[-addr] phase command added
+   V1.70 2015-07-03 phase addr[-addr] phase  command added
    V1.71 2015-07-03 (RB) CVEC/DVEC directives and noLabelLoad option added
                     *   CVEC/DVEC declare code/data vector fields
                         if not declared already, they will be auto-inserted into label list
@@ -93,9 +93,10 @@
    V1.73 2015-07-09 (RB) 6301 option added
                     *   like 6801/03 but with some 6809-specific commands (AIM/EIM/OIM/TIM) and addressing modes (BE/BI)
                     *   additional opcodes SLP and XGDX
+   V1.74 2015-07-09 phase addr[-addr] {+|-}rel  command added
 */
 
-#define ID  "1.73"
+#define ID  "1.74"
 
 #if RB_VARIANT
 #define VERSION ID "-RB"
@@ -193,13 +194,14 @@ typedef unsigned short word;
 #define FNCASESENS 1
 #endif
 
-#define MAXPHASES 128                   /* should be overkill, but who knows */
+#define MAXPHASES 16384                 /* should be overkill, but who knows */
 
 typedef struct _phasedef                /* data for a phase                  */
   {
   unsigned short from;
   unsigned short to;
   unsigned short phase;
+  unsigned short rel;
   } phasedef;
 
 /*****************************************************************************/
@@ -1381,14 +1383,6 @@ char *block_r[] =
   "D","X","Y","U","S","?","?","?","?","?","?","?","?","?","?","?"
   };
 
-char *off4[] =
-  {
-    "0",  "1",  "2",  "3",  "4",  "5",  "6",  "7",
-    "8",  "9", "10", "11", "12", "13", "14", "15",
-  "-16","-15","-14","-13","-12","-11","-10", "-9",
-   "-8", "-7", "-6", "-5", "-4", "-3", "-2", "-1"
-  };
-
 char reg[] = { 'X', 'Y', 'U', 'S' };
 
 byte *codes            = m6809_codes;
@@ -1559,12 +1553,24 @@ return -1;
 word PhaseInner(word W, word addr)
 {
 int i;
-for (i = 0; i < numphases; i++)
+for (i = numphases - 1; i >= 0; i--)
   {
-  int phend = phases[i].phase + phases[i].to - phases[i].from;
-  if (addr >= phases[i].from && addr <= phases[i].to &&
-      W >= phases[i].phase && W <= phend)
-    return W - phases[i].phase + phases[i].from;
+  word from = phases[i].from;
+  if (addr >= from && addr <= phases[i].to)
+    {
+    word phase = phases[i].phase;
+    word phend = phase + phases[i].to - phases[i].from;
+    /* if we're dealing with a relative phase, fetch outer phase's boundaries */
+    if (phases[i].rel)
+      {
+      from = phases[phases[i].phase].from;
+      phase = phases[phases[i].phase].phase;
+      phend = phase + phases[phases[i].phase].to - phases[phases[i].phase].from;
+      }
+    if ((W >= phase && W <= phend) ||
+        phases[i].rel)                  /* relative phases are ALWAYS phased */
+      return W - phase + from + phases[i].rel;
+    }
   }
 return W;
 }
@@ -1576,35 +1582,21 @@ return W;
 word DephaseOuter(word W, word addr)
 {
 int i;
-for (i = 0; i < numphases; i++)
+for (i = numphases - 1; i >= 0; i--)
   {
-  if (addr >= phases[i].from && addr <= phases[i].to &&
-      (W < phases[i].from || W > phases[i].to))
-    return W - phases[i].from + phases[i].phase;
-  }
-return W;
-}
-
-/*****************************************************************************/
-/* Phase : "phase" an address if necessary                                   */
-/*****************************************************************************/
-
-word Phase(word W, word addr)
-{
-int i;
-for (i = 0; i < numphases; i++)
-  {
-  if (addr >= phases[i].from && addr <= phases[i].to)
+  word from = phases[i].from;
+  word to = phases[i].to;
+  if (addr >= from && addr <= to &&
+      (W < from || W > to))
     {
-    if (W >= phases[i].from && W <= phases[i].to)
-      return W - phases[i].phase + phases[i].from;
-    else if (W < phases[i].from || W > phases[i].to)
-      return W - phases[i].from + phases[i].phase;
+    if (phases[i].rel)
+      return W + phases[i].rel;
+    else
+      return W - from + phases[i].phase;
     }
   }
 return W;
 }
-
 
 /*****************************************************************************/
 /* AddLabel : adds a label to the list                                       */
@@ -2263,9 +2255,6 @@ if (T & 0x80)
   }
 else
   {
-#if 0
-  sprintf(buf,"%s,%c", off4[T & 0x1F], R);
-#else
   char c = T & 0x1F;
   if (c & 0x10)
     c |= 0xf0;
@@ -2276,7 +2265,6 @@ else
     }
   else
     sprintf(buf,"%s,%c", signed_string(c, 2, (word)(PC - 1)), R);
-#endif
   }
   
 strcat(buffer,buf);
@@ -2359,7 +2347,10 @@ switch(M)
     bSetLabel = !IS_CONST(PC);
     W = ARGWORD(PC); PC+=2;
     if (bSetLabel)
+      {
+      W = PhaseInner(W, (word)(PC - 2));
       AddLabel(MI, W);
+      }
     break;
 
   case _dir:
@@ -2369,18 +2360,22 @@ switch(M)
     if (dp >= 0)
       {
       W = (word)((dp << 8) | T);
-      W = PhaseInner(W, pc);
       if (bSetLabel)
+        {
+        W = PhaseInner(W, (word)(PC - 1));
         AddLabel(MI, W);
+        }
       }
     break;
 
   case _ext:
     bSetLabel = !IS_CONST(PC);
     W = ARGWORD(PC); PC += 2;
-    W = PhaseInner(W, pc);
     if (bSetLabel)
+      {
+      W = PhaseInner(W, (word)(PC - 2));
       AddLabel(MI, W);
+      }
     break;
     
   case _ind:
@@ -2395,18 +2390,22 @@ switch(M)
     bSetLabel = !IS_CONST(PC);
     T = ARGBYTE(PC); PC++;
     W = (word)(PC + (signed char)T);
-    W = DephaseOuter(W, PC);
     if (bSetLabel)
+      {
+      W = DephaseOuter(W, (word)(PC - 1));
       AddLabel(MI, W);
+      }
     break;
     
   case _rew:
     bSetLabel = !IS_CONST(PC);
     W = ARGWORD(PC); PC += 2;
     W += (word)PC;
-    W = DephaseOuter(W, PC);
     if (bSetLabel)
+      {
+      W = DephaseOuter(W, (word)(PC - 2));
       AddLabel(MI, W);
+      }
     break;
     
   case _r1:
@@ -2426,9 +2425,11 @@ switch(M)
     if (dp >= 0)
       {
       W = (word)((dp << 8) | T);
-      W = PhaseInner(W, pc);
       if (bSetLabel)
+        {
+        W = PhaseInner(W, (word)(PC - 1));
         AddLabel(MI, W);
+        }
       }
     break;
 
@@ -2436,9 +2437,11 @@ switch(M)
     T = ARGBYTE(PC); PC++;
     bSetLabel = !IS_CONST(PC);
     W = ARGWORD(PC); PC+=2;
-    W = PhaseInner(W, pc);
     if (bSetLabel)
+      {
+      W = PhaseInner(W, (word)(PC - 2));
       AddLabel(MI, W);
+      }
     break;
     
   case _bt:
@@ -2613,6 +2616,8 @@ switch (M)
     bGetLabel = !IS_CONST(PC);
     W = ARGWORD(PC);
     PC += 2;
+    if (bGetLabel)
+      W = PhaseInner(W, (word)(PC - 2));
     sprintf(buffer,"%-7s #%s", I, label_string(W, bGetLabel, (word)(PC - 2)));
     break;
 
@@ -2623,7 +2628,8 @@ switch (M)
     if (dp >= 0)
       {
       W = (word)((dp << 8) | T);
-      W = PhaseInner(W, pc);
+      if (bGetLabel)
+        W = PhaseInner(W, (word)(PC - 1));
       sprintf(buffer, "%-7s %s", I, label_string(W, bGetLabel, (word)(PC - 1)));
       }
     else
@@ -2633,7 +2639,8 @@ switch (M)
   case _ext:
     bGetLabel = !IS_CONST(PC);
     W = ARGWORD(PC);
-    W = PhaseInner(W, pc);
+    if (bGetLabel)
+      W = PhaseInner(W, (word)PC);
     PC += 2;
     if ((dp >= 0) &&
         ((W & (word)0xff00) == ((word)dp << 8)))
@@ -2708,7 +2715,7 @@ switch (M)
     if (bGetLabel)
       {
       W = (word)(PC + (signed char)T);
-      W = DephaseOuter(W, PC);
+      W = DephaseOuter(W, (word)(PC - 1));
       sprintf(buffer,"%-7s %s", I, label_string(W, bGetLabel, (word)(PC - 1)));
       }
     else
@@ -2726,7 +2733,8 @@ switch (M)
     W = ARGWORD(PC);
     PC += 2;
     W += (word)PC;
-    W = DephaseOuter(W, PC);
+    if (bGetLabel)
+      W = DephaseOuter(W, (word)(PC - 2));
     sprintf(buffer,"%-7s %s", I, label_string(W, bGetLabel, (word)(PC - 2)));
     break;
     
@@ -2868,7 +2876,8 @@ switch (M)
       {
       char mBuf[20];
       W = (word)((dp << 8) | T);
-      W = PhaseInner(W, pc);
+      if (bGetLabel)
+        W = PhaseInner(W, (word)(PC - 1));
       strcpy(mBuf, number_string(M, 2, (word)(PC - 2)));
       sprintf(buffer,
               "%-7s #%s,%s",
@@ -2893,7 +2902,8 @@ switch (M)
     PC++;
     bGetLabel = !IS_CONST(PC);
     W = ARGWORD(PC);
-    W = PhaseInner(W, pc);
+    if (bGetLabel)
+      W = PhaseInner(W, (word)PC);
     PC += 2;
     {
     char tBuf[20];
@@ -4113,6 +4123,7 @@ enum
   infoInclude,                          /* INCLUDE infofilename              */
   infoBinary,                           /* [+]BINARY addr[-addr]             */
   infoWord,                             /* [+]WORD addr[-addr]               */
+  infoDWord,                            /* [+]DWORD addr[-addr]              */
   infoUnused,                           /* [+]UNUSED addr[-addr]             */
   infoInsert,                           /* INSERT addr[-addr] text           */
   infoSetDP,                            /* SETDP [addr[-addr]] dp            */
@@ -4147,7 +4158,7 @@ enum
   };
 static struct                           /* structure to convert key to type  */
   {
-  char * szName;
+  const char *szName;
   int nType;
   } sKey[] =
   {
@@ -4160,6 +4171,7 @@ static struct                           /* structure to convert key to type  */
   { "BIN",          infoBinary },
   { "BINARY",       infoBinary },
   { "WORD",         infoWord },
+  { "DWORD",        infoDWord },
   { "UNUSED",       infoUnused },
   { "INSERT",       infoInsert },
   { "SETDP",        infoSetDP },
@@ -4292,6 +4304,9 @@ while (fgets(szBuf, sizeof(szBuf), fp))
     case infoData :                     /* [+]DATA addr[-addr]               */
     case infoBinary :                   /* [+]BINARY addr[-addr]             */
     case infoWord :                     /* [+]WORD addr[-addr]               */
+    case infoDWord :                    /* [+]DWORD addr[-addr]              */
+      /* f9dasm can't really do DWORDs (only in 6309 LDQ processing),
+         so this is treated like WORD+CONST */
     case infoUnused :                   /* [+]UNUSED addr[-addr]             */
     case infoRMB :                      /* [+]RMB addr[-addr]                */
     case infoConstant :                 /* [+]CONST addr[-addr]              */
@@ -4374,6 +4389,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
                                 (nType == infoData)     ? (AREATYPE_DATA | bDataType) :
                                 (nType == infoBinary)   ? AREATYPE_BINARY :
                                 (nType == infoWord)     ? (AREATYPE_WORD | bDataType) :
+                                (nType == infoDWord)    ? (AREATYPE_WORD | AREATYPE_CONST | bDataType) :
                                 (nType == infoRMB)      ? AREATYPE_RMB :
                                 (nType == infoConstant) ? (AREATYPE_CONST | bDataType) :
                                 (nType == infoBreak)    ? AREATYPE_ULABEL :
@@ -4873,7 +4889,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
     case infoPhase :                    /* PHASE addr[-addr] phase           */
       {
       char *laddr = p;
-      int nPhase;
+      int nPhase, nRel, bSigned;
       
       for (; (*p) && (*p != ' ') && (*p != '\t'); p++) ;
       if (*p)
@@ -4885,9 +4901,24 @@ while (fgets(szBuf, sizeof(szBuf), fp))
         break;
       else if (nScanned == 1)
         nTo = nFrom;
+      bSigned = (*p == '+' || *p == '-');
       nScanned = sscanf(p, "%x", &nPhase);
       if (nScanned < 1)
         break;
+      if (bSigned)
+        {
+        /* allow relative phases - no check for overlapping areas. GIGO */
+        int i;
+        nRel = nPhase;
+        for (i = numphases - 1; i >= 0; i--)
+          if (nFrom >= phases[i].from && nFrom <= phases[i].to && !phases[i].rel)
+            {
+            nPhase = i;
+            break;
+            }
+        }
+      else
+        nRel = 0;
       if ((nFrom < 0) || (nFrom >= 0x10000) ||
           (nTo < 0) || (nTo >= 0x10000) || (nFrom > nTo) ||
           (nPhase < 0) || (nPhase >= 0x10000))
@@ -4897,7 +4928,9 @@ while (fgets(szBuf, sizeof(szBuf), fp))
         {
         phases[numphases].from = nFrom;
         phases[numphases].to = nTo;
-        phases[numphases++].phase = nPhase;
+        phases[numphases].phase = nPhase;
+        phases[numphases].rel = nRel;
+        numphases++;
         }
       }
       break;
@@ -5301,7 +5334,7 @@ do
     }
 
   {                                     /* deal with phases                  */
-  int newphase = GetPhaseDef(pc);
+  int newphase = GetPhaseDef((word)pc);
   if (newphase != curphase)
     {
     curphase = newphase;
@@ -5411,7 +5444,7 @@ do
     pc++;
 
   if (curphase >= 0 &&                  /* phase definition change?          */
-      curphase != GetPhaseDef(pc))
+      curphase != GetPhaseDef((word)pc))
     fprintf(out, "\n        %-*s\n\n", 7, "DEPHASE");
 
   if ((pc < 0x10000) &&                 /* only if still in range,           */

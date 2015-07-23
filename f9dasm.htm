@@ -227,7 +227,7 @@ Anything following an asterisk (<b>*</b>) is interpreted as a comment.</p>
   <dd>includes the given info file.</dd>
   <dt><b>setdp <i>[addr[-addr]] dp-content</i></b></dt>
   <dd>uses the specified direct page (if the specified processor can 
-      do that - 6800 implicitly uses Direct Page 0).<br>
+      do that - 6800 and its derivates implicitly uses Direct Page 0).<br>
       To allow usage with programs that repeatedly change the direct page,
       an address range can be given.<br />
       If only the start address is given, the range is assumed to start there
@@ -258,7 +258,7 @@ Anything following an asterisk (<b>*</b>) is interpreted as a comment.</p>
 	  Would you? I wouldn't.<br>
 	  In this case, it's easier to prepend a <b>remap</b> instruction that tells
 	  f9dasm to "shift" the following addresses in the info file some bytes.</dd>
-  <dt><b>phase <i>addr[-addr] phase</i></b></dt>
+  <dt><b>phase <i>addr[-addr] [+|-]phase</i></b></dt>
   <dd>Sometimes, an EPROM can contain data that are mapped to a different location;
       in this case, all jump targets etc. inside that area are incorrect,
       i.e., "out of phase".
@@ -268,9 +268,20 @@ Anything following an asterisk (<b>*</b>) is interpreted as a comment.</p>
       an Assembler that can process these pseudo-ops is required
       (the mighty <a href="http://john.ccac.rwth-aachen.de:8000/as/">AS</a> can do it,
       and my A09 can do it since V1.30, too).<br />
-      If your Assembler of choice can't do it, all you can do is to cut the binary
+      This deals with one part of the problem - data inside phased areas are
+      disassembled correctly. But to reference them correctly from <i>outside</i> the
+      phased area requires additional, <b><i>relative</i></b> phase statements.<br />
+      Relative phase statements are made by adding a + or - before <b><i>phase</i></b>
+      (which in this case is a relative value).<br />
+      <b>Attention:</b> a relative phase statement can only be set <i>inside</i> a phased
+      area; so, if relative phasing is required, <i>all</i> areas in the disassembled module
+      that use it have to be put into a phased area, even the "un-phased" ones, like:
+      <pre>phase 8000-ffff 8000</pre>
+      and relative phases have to be defined <i>after</i> the phase area definition.<br />
+      If your Assembler of choice can't handle phasing, all you can do is to cut the binary
       in slices, use the <b>-offset</b> command line option to disassemble them,
-      and merge the generated assembler source files by hand.</dd>
+      and merge the generated assembler source files by hand.
+      </dd>
   <dt><b>cvec[tor] <i>addr[-addr]</i></b></dt>
   <dd>defines a <i>code vector</i> area (a table of code addresses).<br>
       Works like <b>word <i>addr[-addr]</i></b>, but also defines code labels for
