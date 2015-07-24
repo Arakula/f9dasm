@@ -5065,12 +5065,36 @@ if (codes==m6809_codes)
 else if (codes==m6800_codes)
   pc+=8;
   
+/* 
+ * RB: is this true?                                                         
+ * Can we safely assume that the load address is a valid jump entry?         
+ * 
+ * HS: we have no way of knowing, but it would be a weird idea to explicitly
+ * specify an entry point address that isn't. GIGO. 
+ * 
+ * RB: multiple ROMs (or better: ROM banks at the same logical address) disassembled individually might be a counterexample,
+ * there, "spillover" from other banks might occur -- between banked and static code even within an instruction. 
+ * quite a special occurrence, agreed, but I added a "noLoadLabel" option (default: FALSE) for such cases
+ * 
+ * HS: I've been thinking... there's another reason where it's good to have
+ * "noLoadLabel". Motorola S-Files always have an entry point address;
+ * default is 0 (which is ambiguous, since 0 might be the start address as well).
+ *
+ */
+if ( (load >= 0) && (noLoadLabel == FALSE) )
+  AddLabel(_jmp, (word)load);
+
+if (infoname)                           /* now get all other settings        */
+  processinfo(infoname, out, &fvec);    /* from info file                    */
+
 /* set label names and attributes */
 for(; pc<=0xfffe; pc+=2)
 {
   /* precaution for case of funky HEX/S files
    * blank memory is filled with $010101... */
-  if( ARGWORD(pc)!=0x0101 )
+  if( ARGWORD(pc)!= 0x0101 &&
+     !IS_CONST(pc) && /* only if not defined as constant!  */
+     !IS_LABEL(pc))   /* only if not defined in info file! */
   {
     /* vectors are words and data */
     ATTRBYTE(pc)  |=AREATYPE_WORD|AREATYPE_LABEL;
@@ -5099,28 +5123,6 @@ for(; pc<=0xfffe; pc+=2)
     }
   }
 }
-
-/* 
- * RB: is this true?                                                         
- * Can we safely assume that the load address is a valid jump entry?         
- * 
- * HS: we have no way of knowing, but it would be a weird idea to explicitly
- * specify an entry point address that isn't. GIGO. 
- * 
- * RB: multiple ROMs (or better: ROM banks at the same logical address) disassembled individually might be a counterexample,
- * there, "spillover" from other banks might occur -- between banked and static code even within an instruction. 
- * quite a special occurrence, agreed, but I added a "noLoadLabel" option (default: FALSE) for such cases
- * 
- * HS: I've been thinking... there's another reason where it's good to have
- * "noLoadLabel". Motorola S-Files always have an entry point address;
- * default is 0 (which is ambiguous, since 0 might be the start address as well).
- *
- */
-if ( (load >= 0) && (noLoadLabel == FALSE) )
-  AddLabel(_jmp, (word)load);
-
-if (infoname)                           /* now get all other settings        */
-  processinfo(infoname, out, &fvec);    /* from info file                    */
 
 /* RB: any vector fields declared? */
 if(fvec==TRUE)
