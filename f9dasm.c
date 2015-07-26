@@ -94,9 +94,12 @@
                     *   like 6801/03 but with some 6809-specific commands (AIM/EIM/OIM/TIM) and addressing modes (BE/BI)
                     *   additional opcodes SLP and XGDX
    V1.74 2015-07-09 phase addr[-addr] {+|-}rel  command added
+   V1.75 2015-07-26 Only install system vector labels if they aren't defined in an info file
+                    INSERT, COMMENT, PREPCOMM without address range can be used to prepend text to the output, too
+                    PREPEND without address now works like normal PREPEND - it adds BEFORE the first line
 */
 
-#define ID  "1.74"
+#define ID  "1.75"
 
 #if RB_VARIANT
 #define VERSION ID "-RB"
@@ -4452,12 +4455,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
       }
       break;
 
-    case infoComment :                  /* COMMENT addr[-addr] comment       */
-      if (!emitComments)
-        break;
-      /* otherwise fall thru to... */
     case infoLabel :                    /* LABEL addr name                   */
-    case infoInsert :                   /* INSERT addr[-addr] text           */
     DoInsert:                           /* PREPCOMM, PREPEND                 */
       {
       char *laddr = p;
@@ -4747,10 +4745,12 @@ while (fgets(szBuf, sizeof(szBuf), fp))
         } while (1);
       }
       break;
+    case infoComment :                  /* COMMENT addr[-addr] comment       */
     case infoPrepComm :                 /* PREPCOMM [addr[-addr]] comment    */
       if (!emitComments)
         break;
       /* otherwise fall through to... */
+    case infoInsert :                   /* INSERT [addr[-addr]] text         */
     case infoPrepend :                  /* PREPEND [addr[-addr]] line        */
       nScanned = Scan2Hex(p, &nFrom, &nTo);
       if (nScanned == 1)
@@ -4777,19 +4777,33 @@ while (fgets(szBuf, sizeof(szBuf), fp))
           *szPrepend = '\0';
         }
       else
-        {
-        int nLen = strlen(szPrepend) + strlen(p) + 4;
-        szPrepend = realloc(szPrepend, nLen);
-        }
+        szPrepend = realloc(szPrepend, strlen(szPrepend) + strlen(p) + 4);
       if (szPrepend)
         {
-        strcat(szPrepend, "\n");
-        if (strlen(p))
+        size_t len = 0;
+        if (nType == infoPrepComm ||    /* if prepending line                */
+            nType == infoPrepend)
           {
-          if (nType == infoPrepComm)    /* if PREPCOMM                       */
-            sprintf(szPrepend + strlen(szPrepend),
-                    "%c ", cCommChar);
-          strcat(szPrepend, p);
+          char *old = strdup(szPrepend);
+          if (strlen(p) && nType == infoPrepComm)
+            len = sprintf(szPrepend, "%c ", cCommChar);
+          len += sprintf(szPrepend + len, "%s", p);
+          if (*old)
+            len += sprintf(szPrepend + len, "\n%s", old);
+          free(old);
+          }
+        else if (nType == infoComment ||/* if appending a line               */
+                 nType == infoInsert)
+          {
+          len = strlen(szPrepend);
+          if (len)
+            strcpy(szPrepend + len++, "\n");
+          if (strlen(p))
+            {
+            if (nType == infoComment)
+              len += sprintf(szPrepend + len, "%c ", cCommChar);
+            strcpy(szPrepend + len, p);
+            }
           }
         }
       break;
