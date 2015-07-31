@@ -97,9 +97,12 @@
    V1.75 2015-07-26 Only install system vector labels if they aren't defined in an info file
                     INSERT, COMMENT, PREPCOMM without address range can be used to prepend text to the output, too
                     PREPEND without address now works like normal PREPEND - it adds BEFORE the first line
+   V1.76 2015-07-31 (RB) declobbered CONST(ANT)
+                    *    CONST now works regardless of data type (formerly not possible with WORD data)
+
 */
 
-#define ID  "1.75"
+#define ID  "1.76"
 
 #if RB_VARIANT
 #define VERSION ID "-RB"
@@ -132,6 +135,8 @@
 /* RB: new vector datatypes */
 #define DATATYPE_DVEC   0x0100
 #define DATATYPE_CVEC   0x0200
+/* RB: const needs to be unclobbered -- can be hex, bin, word, ...) */
+#define AREATYPE_CONST  0x0400
 
 #define AREATYPE_CLABEL 0x01
 #define AREATYPE_LABEL  0x02
@@ -144,14 +149,17 @@
 #define AREATYPE_DEC    (AREATYPE_DATA | DATATYPE_DEC)
 #define AREATYPE_HEX    (AREATYPE_DATA | DATATYPE_HEX)
 #define AREATYPE_CHAR   (AREATYPE_DATA | DATATYPE_CHAR)
-#define AREATYPE_CONST  (AREATYPE_CODE | AREATYPE_DATA)
+
+/* RB: this used to be AREA_CONST, but in fact its CODA ... */
+#define AREATYPE_CODA  (AREATYPE_CODE | AREATYPE_DATA)
 
 /* RB: new vector areatypes */
 #define AREATYPE_DVEC   (AREATYPE_WORD | DATATYPE_DVEC)
 #define AREATYPE_CVEC   (AREATYPE_WORD | DATATYPE_CVEC)
 
-#define IS_CODE(address) ((ATTRBYTE(address)&AREATYPE_CONST)==AREATYPE_CODE)
-#define IS_DATA(address) ((ATTRBYTE(address)&AREATYPE_CONST)==AREATYPE_DATA)
+/* RB: CODE/DATA now derived from CODA, not CONST anymore) */
+#define IS_CODE(address) ((ATTRBYTE(address)&AREATYPE_CODA)==AREATYPE_CODE)
+#define IS_DATA(address) ((ATTRBYTE(address)&AREATYPE_CODA)==AREATYPE_DATA)
 #define IS_CONST(address) ((ATTRBYTE(address)&AREATYPE_CONST)==AREATYPE_CONST)
 
 #define SET_USED(address) used[(address) / 8] |= (1 << ((address) % 8))
