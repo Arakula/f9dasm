@@ -97,9 +97,10 @@
    V1.75 2015-07-26 Only install system vector labels if they aren't defined in an info file
                     INSERT, COMMENT, PREPCOMM without address range can be used to prepend text to the output, too
                     PREPEND without address now works like normal PREPEND - it adds BEFORE the first line
+   V1.76 2015-08-12 USED[LABEL] is treated like LABEL now - i.e., a label name can be passed, too
 */
 
-#define ID  "1.75"
+#define ID  "1.76"
 
 #if RB_VARIANT
 #define VERSION ID "-RB"
@@ -1930,7 +1931,7 @@ return s;
 }
 
 /*****************************************************************************/
-/* label_string : eventually converts a word to a string                     */
+/* label_string : potentially converts a word to a string                    */
 /*****************************************************************************/
 
 char *label_string(word W, int bUseLabel, word addr)
@@ -1983,7 +1984,7 @@ if (Wrel != W)                          /* if it's relative addressing       */
 
   if (nInvert)                          /* if inverting necessary,           */
     {
-    while (*pchk)                       /* invert eventual signs!            */
+    while (*pchk)                       /* invert potential signs!           */
       {
       if (*pchk == '+')
         *pchk = '-';
@@ -3619,7 +3620,7 @@ fclose(fp);
 }
 
 /*****************************************************************************/
-/* ScanHex : scans 1 hex value from a string, eventually remapping           */
+/* ScanHex : scans 1 hex value from a string, potentially remapping          */
 /*****************************************************************************/
 
 int ScanHex(char *s, int *n1)
@@ -3631,7 +3632,7 @@ return num;
 }
 
 /*****************************************************************************/
-/* Scan2Hex : scans 1 or 2 hex values from a string, eventually remapping    */
+/* Scan2Hex : scans 1 or 2 hex values from a string, potentially remapping   */
 /*****************************************************************************/
 
 int Scan2Hex(char *s, int *n1, int *n2)
@@ -4144,7 +4145,7 @@ enum
   infoHex,                              /* [+]HEX addr[-addr]                */
   infoDec,                              /* [+]DEC addr[-addr]                */
   infoChar,                             /* [+]CHAR addr[-addr]               */
-  infoUsedLabel,                        /* USEDLABEL addr[-addr]             */
+  infoUsedLabel,                        /* USEDLABEL addr[-addr] [name]      */
   infoPrepComm,                         /* PREPCOMM [addr[-addr]] comment    */
   infoRelative,                         /* RELATIVE addr[-addr] rel          */
   infoUnRelative,                       /* UNRELATIVE addr[-addr]            */
@@ -4421,17 +4422,6 @@ while (fgets(szBuf, sizeof(szBuf), fp))
         ATTRBYTE(nScanned) &= ~AREATYPE_LABEL;
         }
       break;
-    case infoUsedLabel :                /* USEDLABEL addr[-addr]             */
-      nScanned = Scan2Hex(p, &nFrom, &nTo);
-      if (nScanned == 1)
-        nTo = nFrom;
-      if ((nScanned < 1) ||
-          (nFrom < 0) || (nFrom >= 0x10000) ||
-          (nTo < 0) || (nTo >= 0x10000) || (nFrom > nTo))
-        break;
-      for (nScanned = nFrom; nScanned <= nTo; nScanned++)
-        ATTRBYTE(nScanned) |= AREATYPE_ULABEL;
-      break;
     case infoUncomment :                /* UNCOMMENT addr[-addr]             */
     case infoUnLComment :               /* UNLCOMMENT addr[-addr]            */
       {
@@ -4456,6 +4446,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
       break;
 
     case infoLabel :                    /* LABEL addr name                   */
+    case infoUsedLabel :                /* USEDLABEL addr[-addr] [name]      */
     DoInsert:                           /* PREPCOMM, PREPEND                 */
       {
       char *laddr = p;
@@ -4475,7 +4466,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
            (*q) &&
            (*q != '\n') && 
            (*q != '*') && 
-           ((nType != infoLabel) || ((*q != ' ') && (*q != '\t')));
+           ((nType != infoLabel && nType != infoUsedLabel) || ((*q != ' ') && (*q != '\t')));
            q++)
         {
         if (*q == '\\')                 /* process escape character          */
@@ -4492,10 +4483,21 @@ while (fgets(szBuf, sizeof(szBuf), fp))
         {
         if (nType == infoLabel)         /* if setting a label,               */
           {
-          if (lblnames[nScanned])       /* remove eventual predefinition     */
+          if (lblnames[nScanned])       /* remove potential predefinition    */
             free(lblnames[nScanned]);
           lblnames[nScanned] = strdup(p);
           ATTRBYTE(nScanned) |= AREATYPE_LABEL;
+          }
+        else if (nType == infoUsedLabel)/* if setting a label to used,       */
+          {
+          if (p && *p)                  /* if a name is there                */
+            {
+            if (lblnames[nScanned])     /* remove potential predefinition    */
+              free(lblnames[nScanned]);
+            lblnames[nScanned] = strdup(p);
+            ATTRBYTE(nScanned) |= AREATYPE_LABEL;
+            }
+          ATTRBYTE(nScanned) |= AREATYPE_ULABEL;
           }
         else                            /* if setting a comment or insert,   */
           {
