@@ -35,7 +35,7 @@
 */
 
 #ifndef RB_VARIANT
-  #define RB_VARIANT 0
+  #define RB_VARIANT 1
 #endif
 
 /* History, as far as I could retrace it:
@@ -99,10 +99,18 @@
                     PREPEND without address now works like normal PREPEND - it adds BEFORE the first line
    V1.76 2015-07-31 (RB) declobbered CONST(ANT)
                     *    CONST now works regardless of data type (formerly not possible with WORD data)
-
+   V1.77 2016-02-25 (RB) added support for banked code  [in work]
+                    *    new directive: bdef[ine] name phys-addr size cpu-addr 
+                    *        defines a new bank named "name" of size "size" at CPU-seen address "cpu-addr" that belongs to ROM/RAM physical address "phys-address"
+                    *    new directive: bass[ign] name from[-to] name_dst
+                    *        assigns address(-region) from(-to) to bank "name_dst" and gives it a descriptive name "name" used in disassembly
+                    *    label and data-type declaration get optinal parameter "bank name" so that declarations are added to the banked labels, not the master label
+                    *    code/data disassembly checks whether current ROM address is found in bdef_t list, then uses ORG/PHASE from there
+                    *    code/data disassembly checks whether current ROM address is found in bass_t, then uses operand label name from linked bdef_t->labels
+                    
 */
 
-#define ID  "1.76"
+#define ID  "1.77"
 
 #if RB_VARIANT
 #define VERSION ID "-RB"
@@ -137,6 +145,8 @@
 #define DATATYPE_CVEC   0x0200
 /* RB: const needs to be unclobbered -- can be hex, bin, word, ...) */
 #define AREATYPE_CONST  0x0400
+/* RB: banked memory area requires own declaration */
+#define AREATYPE_BANKED 0x0800
 
 #define AREATYPE_CLABEL 0x01
 #define AREATYPE_LABEL  0x02
@@ -184,6 +194,10 @@
 #define IS_DVEC(address)  (ATTRBYTE(address) & DATATYPE_DVEC)
 #define IS_CVEC(address)  (ATTRBYTE(address) & DATATYPE_CVEC)
 
+/* RB: bank check */
+#define IS_BANK(address)    (ATTRBYTE(address) & AREATYPE_BANKED)==AREATYPE_BANKED)
+#define NUM_BANKS(address)  (ATTRBYTE(address) & 0xff)
+ 
 #ifndef TYPES
 #define TYPES
 typedef unsigned char  byte;
@@ -214,6 +228,31 @@ typedef struct _phasedef                /* data for a phase                  */
   unsigned short phase;
   unsigned short rel;
   } phasedef;
+
+/* bank definition 
+ *    filled by: bdef[ine] name org_phy size org_cpu
+ *    during INFO file parsing: *labels=calloc(sizeof(int)*size)
+ */
+typedef struct	
+  {
+  char 	*name;                          /* bank name */
+  int 	size;			                      /* bank size */
+  int 	org_cpu;                        /* CPU-seen base address of banked area */
+  int		org_phy;                        /* physical base address for currently disassembled ROM address */
+  int 	*labels;                        /* dynamically malloc'ed labels for bank: labels = malloc(sizeof(int)*size)) */
+  } bdef_t;
+
+/* bank assignment definition 
+ *    filled by: bass[ign] bank_name addr_start[-addr_end]
+ *    bank_name is resolved to corresponding bdef_t *bank during INFO file parsing
+ */
+typedef struct
+  {
+	int 	addr_start;                     /* start address */
+	int 	addr_end;		                    /* end address */
+	bdef_t	*bank;                        /* referenced bank */
+	} bass_t;
+
 
 /*****************************************************************************/
 /* Global Data                                                               */
