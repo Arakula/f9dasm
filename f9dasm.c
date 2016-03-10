@@ -107,7 +107,11 @@
                     *    label and data-type declaration get optinal parameter "bank name" so that declarations are added to the banked labels, not the master label
                     *    code/data disassembly checks whether current ROM address is found in bdef_t list, then uses ORG/PHASE from there
                     *    code/data disassembly checks whether current ROM address is found in bass_t, then uses operand label name from linked bdef_t->labels
-                    
+                    *  
+                    * todo:
+                    *   1) [x] data structures
+                    *   2) label parser for bdef / bass
+                    *   3) hook into disassembler
 */
 
 #define ID  "1.77"
@@ -143,10 +147,19 @@
 /* RB: new vector datatypes */
 #define DATATYPE_DVEC   0x0100
 #define DATATYPE_CVEC   0x0200
+
 /* RB: const needs to be unclobbered -- can be hex, bin, word, ...) */
 #define AREATYPE_CONST  0x0400
-/* RB: banked memory area requires own declaration */
-#define AREATYPE_BANKED 0x0800
+
+/* RB: banked code area requires own declaration */
+#define AREATYPE_BCODE  0x0800
+
+/* RB: banked operands might appear, too, with banking independent of code bank */
+#define AREATYPE_BDATA  0x1000
+
+/* RB: banked regions have a start and an end */
+#define AREATYPE_BSTART 0x2000
+#define AREATYPE_BEND   0x4000
 
 #define AREATYPE_CLABEL 0x01
 #define AREATYPE_LABEL  0x02
@@ -195,7 +208,10 @@
 #define IS_CVEC(address)  (ATTRBYTE(address) & DATATYPE_CVEC)
 
 /* RB: bank check */
-#define IS_BANK(address)    (ATTRBYTE(address) & AREATYPE_BANKED)==AREATYPE_BANKED)
+#define IS_BCODE(address)   ((ATTRBYTE(address) & AREATYPE_BCODE)  == AREATYPE_BCODE)
+#define IS_BDATA(address)   ((ATTRBYTE(address) & AREATYPE_BDATA)  == AREATYPE_BDATA)
+#define IS_BSTART(address)  ((ATTRBYTE(address) & AREATYPE_BSTART) == AREATYPE_BSTART)
+#define IS_BEND(address)    ((ATTRBYTE(address) & AREATYPE_BEND)   == AREATYPE_BEND)
 #define NUM_BANKS(address)  (ATTRBYTE(address) & 0xff)
  
 #ifndef TYPES
@@ -242,7 +258,14 @@ typedef struct
   int 	*labels;                        /* dynamically malloc'ed labels for bank: labels = malloc(sizeof(int)*size)) */
   } bdef_t;
 
-/* bank assignment definition 
+/* banks container */
+typedef struct
+  {
+  int max;                              /* number of elements stored */
+  bdef_t *def;                          /* pointer to definitions */
+  } banks_t;
+
+/* bank/operand assignment definition 
  *    filled by: bass[ign] bank_name addr_start[-addr_end]
  *    bank_name is resolved to corresponding bdef_t *bank during INFO file parsing
  */
@@ -253,7 +276,7 @@ typedef struct
 	bdef_t	*bank;                        /* referenced bank */
 	} bass_t;
 
-
+  
 /*****************************************************************************/
 /* Global Data                                                               */
 /*****************************************************************************/
@@ -299,6 +322,7 @@ unsigned begin = 0xffff, end = 0, offset = 0;
 int load = -1;
 static char *loaded[200] = {0};
 char *sLoadType = "";
+
 /* RB: get a divider after BRA/JMP/SWIx/RTS/RTI/PULx PC */
 int optdelimbar = FALSE;  
 
@@ -311,6 +335,11 @@ int noLoadLabel = FALSE;
 /* RB: system vectors */
 char *vec_6801[] = {"IRQ_SCI","IRQ_T0F","IRQ_OCF","IRQ_ICF","IRQ_EXT","SWI","NMI","RST"};
 char *vec_6809[] = {"DIV0","SWI3","SWI2","FIRQ","IRQ","SWI","NMI","RST"};
+
+/* RB: banking variables */
+banks_t banks={0,NULL};                 /* container for all bank definitions */
+int *label_bcode = NULL;                 /* like *label, but holding address-to-bank assignment */
+int *label_bdata = NULL;                 /* like *label, but holding operand-to-bank assignment */
 
 enum                                    /* available options                 */
   {
@@ -1935,7 +1964,7 @@ if ((nDigits == 2) &&                   /* if 2-digit value                  */
 #if RB_VARIANT
     sprintf(s, "'%c'", W);
 #else
-    sprintf(s, "'%c", W);
+    sprintf(s, "'%c", W);               /* RB: shouldn't this close somewhere? check! */
 #endif
   else
     sprintf(s, "$%02x", W);
@@ -1979,6 +2008,8 @@ return s;
 /*****************************************************************************/
 /* label_string : eventually converts a word to a string                     */
 /*****************************************************************************/
+
+/* RB: should respect banking -- addr is PC at time of calling */
 
 char *label_string(word W, int bUseLabel, word addr)
 {
@@ -3119,6 +3150,8 @@ wfCur = ShowMemFlags(pc) &              /* get flags for current byte        */
 
 for (end = pc + 1; ; end++)             /* find end of block                 */
   {
+
+  /* RB: respect banking here */
   if(IS_LABEL(end))                     /* RB: don't overrun labels ...      */
     {                                   /* HS: unless they're displacements! */
     char *slabel = label_string((word)end, 1, (word)end);
@@ -3243,7 +3276,6 @@ printf("\n"
        "\tdon't apply label name to constant but treat it as a number\n"
        "\t\t\t    CONST from[-to]\n"
        "\tmark auto-generated label as used\n"
-       "\t\t\t    USED[LABEL] addr\n"
       "\nCommenting\n"
        "\tcomment:            COMM[ENT] addr[-addr] text\n"
        "\tsuppress comments:  UNCOMM[ENT] addr[-addr] text\n"
@@ -3291,6 +3323,9 @@ printf("\n"
        "UNREL[ATIVE] addr[-addr]\n"
        "REMAP addr[-addr] offset\n"
        "PHASE addr[-addr] phase\n"
+       "BDEF[ine] name phys_org size cpu_org\n"
+       "BCODE name addr[-addr]\n"
+       "BDATA name addr[-addr]\n"
        "END\n"
 #endif
        );
@@ -4196,9 +4231,14 @@ enum
   infoRelative,                         /* RELATIVE addr[-addr] rel          */
   infoUnRelative,                       /* UNRELATIVE addr[-addr]            */
   infoPrepLComment,                     /* PREPLCOMM addr[-addr] [.]lcomment */
-  infoRemap,                            /* REMAP addr[-addr] offs            */
   infoFile,                             /* FILE filename                     */
+  infoRemap,                            /* REMAP addr[-addr] offs            */
   infoPhase,                            /* PHASE addr[-addr] phase           */
+
+  /* RB: bank define / bank assign / operand assign directives */
+  infoBdef,                             /* BDEF[INE] name phys-addr size cpu-addr */
+  infoBcode,                            /* BCODE name from[-to] name_dst */
+  infoBdata,                            /* BDATA name from[-to] name_dst */
 
   /* RB: new vector label types */
   infoCVector,                           /* CVEC[TOR] addr[-addr]             */
@@ -4260,6 +4300,12 @@ static struct                           /* structure to convert key to type  */
   { "FILE",         infoFile },
   { "PHASE",        infoPhase },
 
+  /* RB: bank define / bank assign */
+  { "BDEF",         infoBdef },
+  { "BDEFINE",      infoBdef },
+  { "BCODE",        infoBcode },
+  { "BDATA",        infoBdata },
+  
   /* RB: new vector label types */
   { "CVECTOR",      infoCVector },
   { "CVEC",         infoCVector },
@@ -4947,6 +4993,136 @@ while (fgets(szBuf, sizeof(szBuf), fp))
       loadfile(fname, &begin, &end, &load, nFrom, outfile);
       }
       break;
+
+    case infoBdef:                    /* BDEF bank_name phys_addr bank_size cpu_addr */
+      {
+      char *bname=p;
+      int pbase, psize, cbase;
+      int found=0;
+      
+      /* get/set name end */
+      for (; (*p) && (*p != ' ' ) && (*p != '\t'); p++);
+      if(*p) *p++='\0';
+
+      /* get phys base addr of bank */
+      q = p;
+      for (; (*p) && (*p != ' ' ) && (*p != '\t'); p++);
+      if(*p) *p++='\0';
+      sscanf(q, "%x", &pbase);
+        
+      /* get bank size */
+      q = p;
+      for (; (*p) && (*p != ' ' ) && (*p != '\t'); p++);
+      if(*p) *p++='\0';
+      sscanf(q, "%x", &psize);
+      
+      /* get cpu base addr of bank */
+      q = p;
+      for (; (*p) && (*p != ' ' ) && (*p != '\t'); p++);
+      if(*p) *p++='\0';
+      sscanf(q, "%x", &cbase);
+
+      /* check for redefinition */
+      for(i=0; i<banks.max ; i++)
+      {
+        if(strcmp(bname,banks.def[i].name)==0)
+          found=1;
+      }
+      
+      /* new label found, allocate and copy in name */
+      if(found==0)
+      {
+        i=banks.max;
+        banks.max++;
+
+        banks.def=realloc(banks.def, sizeof(bdef_t)*banks.max);
+
+        if(banks.def==NULL)
+        {
+          fprintf(stderr,"Cannot allocate banks.\n");
+          exit(-1);
+        }
+        
+        /* allocate and copy name */
+        if ( (banks.def[i].name=(char *)malloc(strlen(bname)+1)) == NULL )
+        {
+          fprintf(stderr,"Cannot allocate bank name.\n");
+          exit(-1);
+        }
+        strcpy(banks.def[i].name,bname);
+          
+      }
+
+      /* update label with base addresses and size */
+      banks.def[i].org_phy = pbase;
+      banks.def[i].org_cpu = cbase;
+      banks.def[i].size = psize;
+      
+      }
+      break;
+
+    case infoBcode:                     /* BCODE bank_name from[-to] */
+    case infoBdata:                     /* BDATA bank_name from[-to] */
+      {
+      char *bname;
+      int found=-1;
+      
+      /* get name */
+      bname = p;
+      for (; (*p) && (*p != ' ' ) && (*p != '\t'); p++);
+      if(*p) *p++='\0';
+      
+      /* scan from/to range */
+      nScanned = Scan2Hex(p, &nFrom, &nTo);
+
+      /* skip if not at least "from" address found */
+      if (nScanned < 1)
+        break;
+
+      /* set implicit "to" address, if not specified */
+      if (nScanned == 1)
+        nTo = (nType == infoWord) ? nFrom + 1 : nFrom;
+
+      /* skip in case of erratic ranges */
+      if ((nFrom < 0) || (nTo < 0) || (nFrom > nTo) || (nTo >= 0x10000))
+        break;
+
+      /* check for presence */
+      for(i=0; i<banks.max ; i++)
+      {
+        if(strcasecmp(bname,banks.def[i].name)==0)
+          found=i;
+      }
+      
+      /* label found, add either address or operand assignment */
+      if(found>=0)
+      {
+          for(i=nFrom; i<=nTo; i++)
+          {
+            /* bcode: banked code -- address shift */
+            if(nType==infoBcode)
+            {
+              label[i]=AREATYPE_BCODE;
+              label_bcode[i]=found;
+            }
+
+            /* bdata: banked data -- operand address shift */
+            else
+            {
+              label[i]=AREATYPE_BDATA;
+              label_bdata[i]=found;
+            }
+
+            /* mark start/end of region for easier parsing in disassembler */
+            if(i==nFrom)    label[i]|=AREATYPE_BSTART;
+            else if(i==nTo) label[i]|=AREATYPE_BEND;
+
+          }
+      }
+        else fprintf(stderr,"Unable to find definition of bank \"%s\", skipping bank assignment statement.\n",bname);
+      }
+      break;
+
     case infoPhase :                    /* PHASE addr[-addr] phase           */
       {
       char *laddr = p;
@@ -5038,21 +5214,27 @@ for (i = 1, n = 0; i < argc; ++i)
 
 memory = (byte *)malloc(0x10000);
 label = (int *)malloc(0x10000 * sizeof(int));
-used = (byte *)malloc(0x10000 / 8);
 lblnames = (char **)malloc(0x10000 * sizeof(char *));
+used = (byte *)malloc(0x10000 / 8);
 commentlines = (char **)malloc(0x10000 * sizeof(char *));
 lcomments = (char **)malloc(0x10000 * sizeof(char *));
 rels = (unsigned short *)malloc(0x10000 * sizeof(unsigned short));
 dps = (short *)malloc(0x10000 * sizeof(short));
 phases = (phasedef *)malloc(MAXPHASES * sizeof(phasedef));
 remaps = (int *)malloc(0x10000 * sizeof(int));
-if ((!memory) || (!label) || (!used) ||
-    (!lblnames) || (!commentlines) || (!lcomments) ||
-    (!rels) || (!phases) || (!dps) || (!remaps))
+label_bcode = (int *)malloc(0x10000 * sizeof(int));
+label_bdata = (int *)malloc(0x10000 * sizeof(int));
+if (
+    (!memory) || (!label) || (!used) || (!lblnames) || 
+    (!commentlines) || (!lcomments) || (!rels) || (!phases) || 
+    (!dps) || (!remaps) || (!label_bcode) || (!label_bdata)
+  )
   {
-  printf("no mem buffer\n");
+  printf("No mem buffer\n");
   goto exit;
   }
+memset(label_bcode, -1, 0x10000 * sizeof(int *));       /* RB: index to bdef, -1 means unused */
+memset(label_bdata, -1, 0x10000 * sizeof(int *));       /* RB: index to bdef, -1 means unused */
 memset(memory, 0x01, 0x10000);
 memset(label, 0x00, 0x10000 * sizeof(int));
 memset(used, 0x00, 0x10000 / 8);
@@ -5068,7 +5250,7 @@ if (outname)
   out = fopen(outname,"w");
   if (!out)
     {
-    printf("can't open %s \n",outname);
+    printf("Can't open %s \n",outname);
     return 1;
     }
   fprintf(out,
@@ -5407,6 +5589,13 @@ do
         fprintf(out, "        %-7s\n\n", "DEPHASE");
     }
   }
+
+  /* RB: does a banked code area start? */
+  if( IS_BCODE(pc) && IS_BSTART(label[pc]) )
+  {
+    fprintf(out, "        %-7s $%02X\n\n", "ORG",   banks.def[label_bcode[pc]].org_cpu);
+    fprintf(out, "        %-7s $%02X\n\n", "PHASE", banks.def[label_bcode[pc]].org_phy);
+  }
   
   if (commentlines[pc])
     {
@@ -5420,6 +5609,11 @@ do
       }
     }
 
+  /* this needs to be reworked:
+   * 1) unbanked -> IS_LABEL(pc)
+   * 2) banked code -> IS_LABEL(banks.def[label_bcode[pc]].org_cpu + pc-banks.def[label_bcode[pc]].org_phys) to shift pc to actual cpu address
+   */
+   
   if (IS_LABEL(pc))                     /* if any label here                 */
     {
     if ((strchr(slabel, '+')) ||
@@ -5445,6 +5639,11 @@ do
   else
     llen = fprintf(out, "%-*s ", 7, "");
 
+  /* RB: ShowData() and Dasm() need to respect code/data banking *
+   * 1) unbanked -> IS_xxxx(pc)
+   * 2) banked code -> IS_xxxx(banks.def[label_bcode[pc]].org_cpu + pc-banks.def[label_bcode[pc]].org_phys) to shift pc to actual cpu address
+   * 3) ShowData / Dasm need to know proper reference
+   */
   if (IS_CONST(pc) || IS_DATA(pc))
     {
     add = ShowData(out, pc, (nComment || lcomments[pc]));
@@ -5509,6 +5708,10 @@ do
   if (curphase >= 0 &&                  /* phase definition change?          */
       curphase != GetPhaseDef((word)pc))
     fprintf(out, "\n        %-*s\n\n", 7, "DEPHASE");
+
+  /* RB: does a banked code area end? */
+  if( IS_BCODE(pc) && IS_BEND(label[pc]) )
+    fprintf(out, "        %-7s\n\n", "DEPHASE");
 
   if ((pc < 0x10000) &&                 /* only if still in range,           */
       (!IS_USED(pc - 1)))               /* if we DID skip something set ORG  */
