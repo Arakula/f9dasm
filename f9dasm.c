@@ -2150,8 +2150,10 @@ if (T & 0x80)
       bGetLabel = !IS_CONST(PC);
       W = ARGWORD(PC);
       PC += 2;
-      /*sprintf(buf,"[%s,PC]", label_string(W, bGetLabel, (word)(PC - 2)));*/
-      sprintf(buf, "[%s,PCR]", label_string((word)(W + PC), bGetLabel, (word)(PC - 2)));
+      if ((W < 0x80) || (W >= 0xff80))
+        sprintf(buf, "[%s%s,PCR]", forceextendedaddr, label_string((word)(W + PC), bGetLabel, (word)(PC - 2)));
+      else
+        sprintf(buf, "[%s,PCR]", label_string((word)(W + PC), bGetLabel, (word)(PC - 2)));
       break;
     case 0x07:
       if(allow_6309_codes)
