@@ -98,9 +98,13 @@
                     INSERT, COMMENT, PREPCOMM without address range can be used to prepend text to the output, too
                     PREPEND without address now works like normal PREPEND - it adds BEFORE the first line
    V1.76 2015-08-12 USED[LABEL] is treated like LABEL now - i.e., a label name can be passed, too
+   V1.77 2017-09-30 forward references to near addresses are prefixed with a direct addressing marker
+   V1.78 2019-06-03 PC-relative indirect addressing (like "LDA [XXXX,PCR]") was not correctly disassembled
+                    thanks to GitHub user "ep00ch" for pointing that out!
+
 */
 
-#define ID  "1.76"
+#define ID  "1.78"
 
 #if RB_VARIANT
 #define VERSION ID "-RB"
@@ -1777,6 +1781,7 @@ if (T & 0x80)
     case 0x1B:
       break;
     case 0x0C:
+    case 0x1C:
       bSetLabel = !IS_CONST(PC);
       T = ARGBYTE(PC); PC++;
       if (bSetLabel)
@@ -1794,7 +1799,6 @@ if (T & 0x80)
       PC++;
       break;
     case 0x18:
-    case 0x1C:
       T = ARGBYTE(PC);
       PC++;
       break;
@@ -1821,7 +1825,6 @@ if (T & 0x80)
       bSetLabel = !IS_CONST(PC);
       W = ARGWORD(PC); PC += 2;
       if (bSetLabel)
-        /*AddLabel(MI, W);*/
         AddLabel(MI, (word)(W + PC));
       break;
     case 0x07:
@@ -2052,6 +2055,12 @@ if (T & 0x80)
       bGetLabel = !IS_CONST(PC);
       T = ARGBYTE(PC);
       PC++;
+      /*
+      Something's definitely not right here. This needs a bit of redesign.
+      0x08 should be like 0x09, just with Direct addressing, and forward
+      references should be qualified with "<" to assure they're not treated
+      as Extended by the Assembler.
+      */
       if (rels[PC - 1])
         {
         W = (int)((char)T) + rels[PC - 1];
@@ -2095,10 +2104,13 @@ if (T & 0x80)
 #if 0
       sprintf(buf,"$%s,PC",signed_string((int)(char)T, 2, (word)(PC - 1)));
 #else
+      {
+      char *forced =  (((char)T > 0) /* && (yet undefined option) */) ? forcedirectaddr : "";
       if (bGetLabel)
-        sprintf(buf,"%s,PCR",label_string((word)((int)((char)T) + PC), bGetLabel, (word)(PC - 1)));
+        sprintf(buf,"%s%s,PCR", forced, label_string((word)((int)((char)T) + PC), bGetLabel, (word)(PC - 1)));
       else
-        sprintf(buf,"%s,PC",number_string((word)(int)(char)T, 2, (word)(PC - 1)));
+        sprintf(buf,"%s%s,PC", forced, number_string((word)(int)(char)T, 2, (word)(PC - 1)));
+      }
 #endif
       break;
     case 0x0D:
@@ -2143,8 +2155,15 @@ if (T & 0x80)
       break;
     case 0x1C:
       T = ARGBYTE(PC);
+      bGetLabel = !IS_CONST(PC);
       PC++;
-      sprintf(buf,"[%s,PC]",number_string(T, 2, (word)(PC - 1)));
+      {
+      char *forced =  (((char)T > 0) /* && (yet undefined option) */) ? forcedirectaddr : "";
+      if (bGetLabel)
+        sprintf(buf,"[%s%s,PCR]", forced, label_string((word)((int)((char)T) + PC), bGetLabel, (word)(PC - 1)));
+      else
+        sprintf(buf,"[%s%s,PC]", forced, number_string((word)(int)(char)T, 2, (word)(PC - 1)));
+      }
       break;
     case 0x1D:
       bGetLabel = !IS_CONST(PC);
@@ -4159,8 +4178,8 @@ enum
   infoPhase,                            /* PHASE addr[-addr] phase           */
 
   /* RB: new vector label types */
-  infoCVector,                           /* CVEC[TOR] addr[-addr]             */
-  infoDVector,                           /* DVEC[TOR] addr[-addr]             */
+  infoCVector,                          /* CVEC[TOR] addr[-addr]             */
+  infoDVector,                          /* DVEC[TOR] addr[-addr]             */
 
   infoEnd,                              /* END (processing this file)        */
   };
