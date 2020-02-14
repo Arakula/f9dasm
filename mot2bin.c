@@ -96,7 +96,7 @@ return out;
 /* IsMotorolaHex : tries to load as a Motorola HEX file                      */
 /*****************************************************************************/
 
-int IsMotorolaHex(FILE *f, byte *memory, unsigned *pbegin, unsigned *pend, unsigned *pload)
+int IsMotorolaHex(FILE *f, byte *memory, unsigned *pbegin, unsigned *pend, int *pload)
 {
 int nCurPos = ftell(f);
 int c = 0;
