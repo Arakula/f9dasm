@@ -204,6 +204,8 @@ typedef unsigned short word;
 
 #define MAXPHASES 16384                 /* should be overkill, but who knows */
 
+#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
+
 typedef struct _phasedef                /* data for a phase                  */
   {
   unsigned short from;
@@ -3553,8 +3555,7 @@ strcpy(szBuf, name);
 strupr(szBuf);
 #endif
 for (i = 0;                             /* look whether already loaded       */
-     (i < (sizeof(loaded) / sizeof(loaded[0]))) &&
-     loaded[i];
+     i < ARRAY_SIZE(loaded) && loaded[i];
      i++)
   {
   char szLoaded[256];
@@ -3566,7 +3567,7 @@ for (i = 0;                             /* look whether already loaded       */
     return;                             /* and get out of here               */
   }
                                         /* allow a maximum of 200 inclusions */
-if (i >= (sizeof(loaded) / sizeof(loaded[0])))
+if (i >= ARRAY_SIZE(loaded))
   return;
 
 loaded[i] = strdup(name);               /* copy name to current position     */
@@ -4251,8 +4252,7 @@ strcpy(szBuf, name);
 strupr(szBuf);
 #endif
 for (i = 0;                             /* look whether already loaded       */
-     (i < (sizeof(loaded) / sizeof(loaded[0]))) &&
-     loaded[i];
+     i < ARRAY_SIZE(loaded) && loaded[i];
      i++)
   {
   char szLoaded[256];
@@ -4264,7 +4264,7 @@ for (i = 0;                             /* look whether already loaded       */
     return;                             /* and get out of here               */
   }
                                         /* allow a maximum of 200 inclusions */
-if (i >= (sizeof(loaded) / sizeof(loaded[0])))
+if (i >= ARRAY_SIZE(loaded))
   return;
 
 /* RB: we will otherwise never see an error-free help */
@@ -4316,7 +4316,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
   for (p = q; (*p == ' ') || (*p == '\t'); p++)
     ;
 
-  for (i = 0; i < (sizeof(sKey) / sizeof(sKey[0])); i++)
+  for (i = 0; i < ARRAY_SIZE(sKey); i++)
     {
     if (!strcmp(ltype, sKey[i].szName))
       {
@@ -5058,8 +5058,7 @@ if (infoname)                           /* first get options from info file  */
   optionsinfo(infoname);                /* (may be needed before load)       */
 
 for (i = 0;                             /* remove loaded information         */
-     (i < (sizeof(loaded) / sizeof(loaded[0]))) &&
-     loaded[i];
+     i < ARRAY_SIZE(loaded) && loaded[i];
      i++)
   {
   free(loaded[i]);                      /* this is re-set in processinfo()   */
