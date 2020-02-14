@@ -4140,7 +4140,6 @@ FILE *fp = NULL;
 char szBuf[256];
 int i;
 byte bDataType;
-byte endinfo = 0;
 enum
   {
   infoCode,                             /* [+]CODE addr[-addr]               */

@@ -96,7 +96,7 @@ return out;
 /* IsHex : tries to load as an Intel HEX file                                */
 /*****************************************************************************/
 
-int IsHex(FILE *f, byte *memory, unsigned *pbegin, unsigned *pend, int *pload)
+int IsHex(FILE *f, byte *memory, unsigned *pbegin, unsigned *pend)
 {
 int nCurPos = ftell(f);
 int c = 0, rectype;
@@ -211,7 +211,6 @@ int main(int argc, char *argv[])
 {
 unsigned begin = 0,end = 0, offset = 0;
 char *fname = NULL, *outname = NULL;
-int load = -1;
 int i, j, n;
 int off;
 FILE *f;
@@ -283,7 +282,7 @@ if (outname)
     printf("can't open %s \n",outname);
   }
                                         /* if an Intel HEX file              */
-if ((IsHex(f, memory, &begin, &end, &load)) &&
+if ((IsHex(f, memory, &begin, &end)) &&
     (out != stdout))
   fwrite(memory + begin, end - begin + 1, 1, out);
 
