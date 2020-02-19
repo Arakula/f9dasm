@@ -2634,7 +2634,7 @@ switch (M)
         sprintf(buffer, "CLIF");
         break;
       case 0x3cff :                     /* (6809) CWAI $FF                   */
-        sprintf(buffer, mnemo[_wai].mne);
+        sprintf(buffer, "%s", mnemo[_wai].mne);
         break;
       default :
         sprintf(buffer, "%-7s #%s", I, number_string(T, 2, (word)(PC - 1)));
@@ -3546,7 +3546,7 @@ return nAdd;
 
 void optionsinfo(char *name)
 {
-int i;
+unsigned i;
 FILE *fp = NULL;
 char szBuf[256];
 
@@ -4139,7 +4139,7 @@ void processinfo(char *name, FILE *outfile, int *FoundVectors)
 {
 FILE *fp = NULL;
 char szBuf[256];
-int i;
+unsigned i;
 byte bDataType;
 enum
   {
@@ -4988,7 +4988,8 @@ fclose(fp);
 int main(int argc, char *argv[])
 {
 unsigned pc, add;
-int i, n, nComment, isautolabel, curdp, curphase = -1;
+unsigned i;
+int n, nComment, isautolabel, curdp, curphase = -1;
 int lastwasdata = FALSE;  /* RB: get a divider between data and code */
 int fvec = FALSE;         /* RB: found vector declaration in label file */
 char buf[256];
@@ -4996,7 +4997,7 @@ FILE *out = stdout;
 
 printf("f9dasm: M6800/1/2/3/8/9 / H6309 Binary/OS9/FLEX9 Disassembler V" VERSION "\n");
 
-for (i = 1, n = 0; i < argc; ++i)
+for (i = 1, n = 0; i < (unsigned)argc; ++i)
   {
   if (argv[i][0] != '-')
     {
@@ -5444,7 +5445,7 @@ do
     {
     if (showhex)
       {
-      for (i = 0; i < (int)add; i++)
+      for (i = 0; i < add; i++)
         llen += fprintf(out,"%02X ", memory[(pc + i)&0xFFFF]);
       if (showasc || lcomments[pc])
         for (; i < 5; i++)
@@ -5453,7 +5454,7 @@ do
     if (showasc)
       {
       llen += fprintf(out, "'");
-      for (i = 0; i < (int)add; i++)
+      for (i = 0; i < add; i++)
         {
         byte b = memory[(pc + i) & 0xFFFF];
         llen += fprintf(out, "%c", ((b >= 0x20) && (b <= 0x7e)) ? b : '.');
