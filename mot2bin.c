@@ -41,7 +41,7 @@ static char *Options[]=
 #define ARGBYTE(address) memory[address&0xffff]
 #define ARGWORD(address) (word)((memory[address&0xffff]<<8)|memory[(address+1)&0xffff])
 
-#define ATTRBYTE(address) (label[address & 0xffff])
+#define ATTRBYTE(address) (label[(address) & 0xffff])
 #define LABELTYPE(address) (ATTRBYTE(address) & 0x03)
 #define LABELTYBE_ISLABEL (0x02)
 #define LABEL_REFERENCED(address) ((ATTRBYTE(address) & 0x04) >> 2)
@@ -96,7 +96,7 @@ return out;
 /* IsMotorolaHex : tries to load as a Motorola HEX file                      */
 /*****************************************************************************/
 
-int IsMotorolaHex(FILE *f, byte *memory, unsigned *pbegin, unsigned *pend, int *pload)
+int IsMotorolaHex(FILE *f, byte *memory, unsigned *pbegin, unsigned *pend)
 {
 int nCurPos = ftell(f);
 int c = 0;
@@ -114,12 +114,13 @@ if (c != 'S')
 
 while ((!done) &&
        (nBytes >= 0) &&
-       (fread(&c, 1, 1, f)))            /* while there are lines             */
+       (fread(&c, 1, 1, f) > 0))        /* while there are lines             */
   {
   int nLineType = 0, nBytesOnLine, nAddr, i;
   if (c != 'S')
     break;
-  fread(&nLineType, 1, 1, f);           /* retrieve line type                */
+  if (fread(&nLineType, 1, 1, f) != 1)  /* retrieve line type                */
+    nLineType = 0;                      /* keep gcc happy                    */
   nBytesOnLine = GetHex(f, 2);          /* retrieve # bytes on line          */
   if (nBytesOnLine < 0)                 /* if error                          */
     { nBytes = -1; break; }             /* return with error                 */
@@ -211,8 +212,6 @@ if (nBytes >= 0)
   {
   *pbegin = begin;
   *pend = end;
-  if (load >= 0)
-    *pload = load;
   }
 
 return (nBytes > 0);                    /* pass back #bytes interpreted      */
@@ -226,7 +225,6 @@ int main(int argc, char *argv[])
 {
 unsigned begin = 0,end = 0, offset = 0;
 char *fname = NULL, *outname = NULL;
-int load = -1;
 int i, j, n;
 int off;
 FILE *f;
@@ -301,7 +299,7 @@ if (outname)
     }
   }
 
-if ((IsMotorolaHex(f, memory, &begin, &end, &load)) &&
+if ((IsMotorolaHex(f, memory, &begin, &end)) &&
     (out != stdout))
   fwrite(memory + begin, end - begin + 1, 1, out);
 

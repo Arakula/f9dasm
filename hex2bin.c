@@ -41,7 +41,7 @@ static char *Options[]=
 #define ARGBYTE(address) memory[address&0xffff]
 #define ARGWORD(address) (word)((memory[address&0xffff]<<8)|memory[(address+1)&0xffff])
 
-#define ATTRBYTE(address) (label[address & 0xffff])
+#define ATTRBYTE(address) (label[(address) & 0xffff])
 #define LABELTYPE(address) (ATTRBYTE(address) & 0x03)
 #define LABELTYBE_ISLABEL (0x02)
 #define LABEL_REFERENCED(address) ((ATTRBYTE(address) & 0x04) >> 2)

@@ -119,6 +119,8 @@
 #include <string.h>
 #include <ctype.h>
 
+#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
+
 #define MEMORY(address)  (memory[(address)&0xffff])
 #define OPCODE(address)  MEMORY(address)
 #define ARGBYTE(address) MEMORY(address)
@@ -204,7 +206,6 @@ typedef unsigned short word;
 
 #define MAXPHASES 16384                 /* should be overkill, but who knows */
 
-#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
 typedef struct _phasedef                /* data for a phase                  */
   {
@@ -2226,7 +2227,7 @@ if (T & 0x80)
         goto index_error;
       
     index_error:
-      sprintf(buf,"???");
+      sprintf(buf,"%s","???");
       break;
              
     default:
@@ -2242,10 +2243,10 @@ if (T & 0x80)
         switch (T)
           {
           case 0x8F:
-            sprintf(buf,",W");
+            sprintf(buf,"%s",",W");
             break;
           case 0x90:
-            sprintf(buf,"[,W]");
+            sprintf(buf,"%s","[,W]");
             break;
           case 0xAF:
             bGetLabel = !IS_CONST(PC);
@@ -2260,24 +2261,24 @@ if (T & 0x80)
             sprintf(buf,"[%s,W]", label_string(W, bGetLabel, (word)(PC - 2)));
             break;
           case 0xCF:
-            sprintf(buf,",W++");
+            sprintf(buf,"%s",",W++");
             break;
           case 0xD0:
-            sprintf(buf,"[,W++]");
+            sprintf(buf,"%s","[,W++]");
             break;
           case 0xEF:
-            sprintf(buf,",--W");
+            sprintf(buf,"%s",",--W");
             break;
           case 0xF0:
-            sprintf(buf,"[,--W]");
+            sprintf(buf,"%s","[,--W]");
             break;
           default:
-            sprintf(buf,"???");
+            sprintf(buf,"%s","???");
             break;
           }
         }
       else
-        sprintf(buf,"???");
+        sprintf(buf,"%s","???");
       break;
     }
     
@@ -2610,10 +2611,10 @@ switch (M)
         sprintf(buffer, "%s", mnemo[_sei].mne);
         break;
       case 0x1a40 :                     /* (6809) ORCC $40                   */
-        sprintf(buffer, "SEF");
+        sprintf(buffer, "%s", "SEF");
         break;
       case 0x1a50 :                     /* (6809) ORCC $40+$10               */
-        sprintf(buffer, "SEIF");
+        sprintf(buffer, "%s", "SEIF");
         break;
       case 0x1cfe :                     /* (6809) ANDCC ~$01                 */
         sprintf(buffer, "%s", mnemo[_clc].mne);
@@ -2622,16 +2623,16 @@ switch (M)
         sprintf(buffer, "%s", mnemo[_clv].mne);
         break;
       case 0x1cfb :                     /* (6809) ANDCC ~$04                 */
-        sprintf(buffer, "CLZ");
+        sprintf(buffer, "%s", "CLZ");
         break;
       case 0x1cef :                     /* (6809) ANDCC ~$10                 */
         sprintf(buffer, "%s", mnemo[_cli].mne);
         break;
       case 0x1cbf :                     /* (6809) ANDCC ~$40                 */
-        sprintf(buffer, "CLF");
+        sprintf(buffer, "%s", "CLF");
         break;
       case 0x1caf :                     /* (6809) ANDCC ~($40 + $10)         */
-        sprintf(buffer, "CLIF");
+        sprintf(buffer, "%s", "CLIF");
         break;
       case 0x3cff :                     /* (6809) CWAI $FF                   */
         sprintf(buffer, "%s", mnemo[_wai].mne);
@@ -2692,10 +2693,10 @@ switch (M)
         sprintf(buffer, "%s", mnemo[_dex].mne); PC++;
         break;
       case 0x3121 :                     /* (6809) LEAY +1                    */
-        sprintf(buffer, "INY"); PC++;
+        sprintf(buffer, "%s", "INY"); PC++;
         break;
       case 0x313f :                     /* (6809) LEAY -1                    */
-        sprintf(buffer, "DEY"); PC++;
+        sprintf(buffer, "%s", "DEY"); PC++;
         break;
       case 0x3261 :                     /* (6809) LEAS +1                    */
         sprintf(buffer, "%s", mnemo[_ins].mne); PC++;
@@ -2704,10 +2705,10 @@ switch (M)
         sprintf(buffer, "%s", mnemo[_des].mne); PC++;
         break;
       case 0x3341 :                     /* (6809) LEAU +1                    */
-        sprintf(buffer, "INU"); PC++;
+        sprintf(buffer, "%s", "INU"); PC++;
         break;
       case 0x335f :                     /* (6809) LEAU -1                    */
-        sprintf(buffer, "DEU"); PC++;
+        sprintf(buffer, "%s", "DEU"); PC++;
         break;
       default :
         sprintf(buffer,"%-7s ", I);
@@ -2783,7 +2784,7 @@ switch (M)
 /* hairy - some assemblers expand TAB to TAB + TSTA...
    but there's no guarantee.
       case 0x1f89 :
-        sprintf(buffer, "TAB"); PC++;
+        sprintf(buffer, "%s", "TAB"); PC++;
         break; */
       case 0x1f8a :                     /* (6809) TFR A,CC                   */
         sprintf(buffer, "%s", mnemo[_tap].mne); PC++;
@@ -2791,7 +2792,7 @@ switch (M)
 /* hairy - some assemblers expand TBA to TBA + TSTA...
    but there's no guarantee.
       case 0x1f98 :
-        sprintf(buffer, "TBA"); PC++;
+        sprintf(buffer, "%s", "TBA"); PC++;
         break; */
       case 0x1fa8 :                     /* (6809) TFR CC,A                   */
         sprintf(buffer, "%s", mnemo[_tpa].mne); PC++;
@@ -2836,13 +2837,13 @@ switch (M)
         sprintf(buffer, "%s", mnemo[_psha].mne); PC++;
         break;
       case 0x3406 :                     /* (6809) PSHS D                     */
-        sprintf(buffer, "PSHD"); PC++;
+        sprintf(buffer, "%s", "PSHD"); PC++;
         break;
       case 0x3410 :                     /* (6809) PSHS X                     */
-        sprintf(buffer, "PSHX"); PC++;
+        sprintf(buffer, "%s", "PSHX"); PC++;
         break;
       case 0x3420 :                     /* (6809) PSHS Y                     */
-        sprintf(buffer, "PSHY"); PC++;
+        sprintf(buffer, "%s", "PSHY"); PC++;
         break;
       case 0x3502 :                     /* (6809) PULS A                     */
         sprintf(buffer, "%s", mnemo[_pula].mne); PC++;
@@ -2851,44 +2852,44 @@ switch (M)
         sprintf(buffer, "%s", mnemo[_pulb].mne); PC++;
         break;
       case 0x3506 :                     /* (6809) PULS D                     */
-        sprintf(buffer, "PULD"); PC++;
+        sprintf(buffer, "%s", "PULD"); PC++;
         break;
       case 0x3510 :                     /* (6809) PULS X                     */
-        sprintf(buffer, "PULX"); PC++;
+        sprintf(buffer, "%s", "PULX"); PC++;
         break;
       case 0x3520 :                     /* (6809) PULS Y                     */
-        sprintf(buffer, "PULY"); PC++;
+        sprintf(buffer, "%s", "PULY"); PC++;
         break;
       default:
         buf[0] = '\0';
         T = ARGBYTE(PC);
         PC++;
         if (T & 0x80)
-          strcat(buf,"PC,");
+          strcat(buf, "PC,");
         if (T & 0x40)
           {
           if (M == _r2)
-            strcat(buf,"U,");
+            strcat(buf, "U,");
           if (M == _r3)
-            strcat(buf,"S,");
+            strcat(buf, "S,");
           }
         if (T&0x20)
-          strcat(buf,"Y,");
+          strcat(buf, "Y,");
         if (T & 0x10)
-          strcat(buf,"X,");
+          strcat(buf, "X,");
         if (T & 0x08)
-          strcat(buf,"DP,");
+          strcat(buf, "DP,");
         if ((T & 0x06) == 0x06)
           strcat(buf, "D,");
         else
           {
           if (T & 0x04)
-            strcat(buf,"B,");
+            strcat(buf, "B,");
           if (T & 0x02)
-            strcat(buf,"A,");
+            strcat(buf, "A,");
           }
         if (T & 0x01)
-          strcat(buf,"CC,");
+          strcat(buf, "CC,");
         if (buf[0] != '\0')
           buf[strlen(buf)-1]='\0';
         sprintf(buffer,"%-7s %s", I, buf);
@@ -3546,7 +3547,7 @@ return nAdd;
 
 void optionsinfo(char *name)
 {
-unsigned i;
+unsigned int i;
 FILE *fp = NULL;
 char szBuf[256];
 
@@ -3970,7 +3971,8 @@ while ((!done) &&
   int nLineType = 0, nBytesOnLine, nAddr, i;
   if (c != 'S')
     break;
-  fread(&nLineType, 1, 1, f);           /* retrieve line type                */
+  if (fread(&nLineType, 1, 1, f) != 1)  /* retrieve line type                */
+    nLineType = 0;                      /* keep gcc happy                    */
   nBytesOnLine = GetHex(f, 2);          /* retrieve # bytes on line          */
   if (nBytesOnLine < 0)                 /* if error                          */
     { nBytes = -1; break; }             /* return with error                 */
@@ -4115,10 +4117,10 @@ if ((!IsFlex(f, memory, pbegin, pend, pload)) &&
     SET_USED(i);
     ATTRBYTE(i) |= defaultDataType;
     }
-  fread(&memory[offset&0xFFFF],         /* read binary                       */
-        sizeof(byte),
-        0x10000-(offset&0xFFFF),
-        f);
+  i = fread(&memory[offset&0xFFFF],     /* read binary                       */
+            sizeof(byte),
+            0x10000-(offset&0xFFFF),
+            f);
   sLoadType = "binary";
   }
 
@@ -4139,7 +4141,7 @@ void processinfo(char *name, FILE *outfile, int *FoundVectors)
 {
 FILE *fp = NULL;
 char szBuf[256];
-unsigned i;
+unsigned int i;
 byte bDataType;
 enum
   {
@@ -4988,8 +4990,7 @@ fclose(fp);
 int main(int argc, char *argv[])
 {
 unsigned pc, add;
-unsigned i;
-int n, nComment, isautolabel, curdp, curphase = -1;
+int i, n, nComment, isautolabel, curdp, curphase = -1;
 int lastwasdata = FALSE;  /* RB: get a divider between data and code */
 int fvec = FALSE;         /* RB: found vector declaration in label file */
 char buf[256];
@@ -4997,7 +4998,7 @@ FILE *out = stdout;
 
 printf("f9dasm: M6800/1/2/3/8/9 / H6309 Binary/OS9/FLEX9 Disassembler V" VERSION "\n");
 
-for (i = 1, n = 0; i < (unsigned)argc; ++i)
+for (i = 1, n = 0; i < argc; ++i)
   {
   if (argv[i][0] != '-')
     {
@@ -5058,7 +5059,7 @@ if (infoname)                           /* first get options from info file  */
   optionsinfo(infoname);                /* (may be needed before load)       */
 
 for (i = 0;                             /* remove loaded information         */
-     i < ARRAY_SIZE(loaded) && loaded[i];
+     i < (int)ARRAY_SIZE(loaded) && loaded[i];
      i++)
   {
   free(loaded[i]);                      /* this is re-set in processinfo()   */
@@ -5339,7 +5340,7 @@ if (pc > 0xffff)
 fprintf(out,"        %-7s $%04X\n\n", "ORG", pc);
 do
   {
-  char *slabel;
+  char *slabel = NULL;
   int llen = 0;
   optdelimbar = FALSE;
 
@@ -5445,7 +5446,7 @@ do
     {
     if (showhex)
       {
-      for (i = 0; i < add; i++)
+      for (i = 0; i < (int)add; i++)
         llen += fprintf(out,"%02X ", memory[(pc + i)&0xFFFF]);
       if (showasc || lcomments[pc])
         for (; i < 5; i++)
@@ -5454,7 +5455,7 @@ do
     if (showasc)
       {
       llen += fprintf(out, "'");
-      for (i = 0; i < add; i++)
+      for (i = 0; i < (int)add; i++)
         {
         byte b = memory[(pc + i) & 0xFFFF];
         llen += fprintf(out, "%c", ((b >= 0x20) && (b <= 0x7e)) ? b : '.');
@@ -5506,9 +5507,8 @@ else
   fprintf(out, "        END\n");
 
 exit:
-if (outname)
-  if(out)
-    fclose(out);
+if (outname && out)
+  fclose(out);
 if (memory)
   free(memory);
 if (label)
