@@ -101,10 +101,11 @@
    V1.77 2017-09-30 forward references to near addresses are prefixed with a direct addressing marker
    V1.78 2019-06-03 PC-relative indirect addressing (like "LDA [XXXX,PCR]") was not correctly disassembled
                     thanks to GitHub user "ep00ch" for pointing that out!
+   V1.79 2019-07-27 Print characters 'c with high bit set as 'c|$80 (AS/A09-compatible)
 
 */
 
-#define ID  "1.78"
+#define ID  "1.79"
 
 #if RB_VARIANT
 #define VERSION ID "-RB"
@@ -1899,7 +1900,14 @@ if ((nDigits == 2) &&                   /* if 2-digit value                  */
     sprintf(s, "'%c", W);
 #endif
   else
-    sprintf(s, "$%02x", W);
+    if (isprint(W & 0x7f))
+#if RB_VARIANT
+      sprintf(s, "'%c'|$80", W & 0x7f);
+#else
+      sprintf(s, "'%c|$80", W & 0x7f);
+#endif
+    else
+      sprintf(s, "$%02x", W);
   }
 else if (IS_BINARY(addr))               /* if a binary                       */
   {
