@@ -7,7 +7,7 @@
 <h1>F9DASM - 6800/6801/6802/6803/6808/6809 / 6301/6303/6309 Disassembler</h1>
 
 <p align="right">Copyright (c) 2000 Arto Salmi<br>
-Parts Copyright (c) 2001-2019 Hermann Seib<br>
+Parts Copyright (c) 2001-2020 Hermann Seib<br>
 Parts Copyright (c) 2013 Colin Bourassa<br>
 Parts Copyright (c) 2014-2015 Rainer Buchty</p>
 
@@ -73,8 +73,9 @@ program, I've added this documentation. Have fun!</p>
       Passing the file name <i>help</i> displays help for the information file.</dd>
   <dt><b>-cchar <i>char</i></b></dt>
   <dd><i>char</i> is the character to be used as comment delimiter.<br>
-      Default is <b>*</b>, but not all assemblers can use this.<br>
-	  <b>-cchar ;</b> would switch the comment delimiter to <b>;</b>, for example.</dd>
+      Default is <b>;</b>, but not all assemblers can use this.<br>
+	  <b>-cchar *</b> would switch the comment delimiter to <b>*</b>, for example,
+	  which might be better if a TSC-compatible assembler is used.</dd>
   <dt><b>-[no]flex</b></dt>
   <dd>using this flag, the disassembler uses the standardized FLEX labels for a defined
       range of addresses.</dd>
@@ -294,6 +295,16 @@ Anything following an asterisk (<b>*</b>) is interpreted as a comment.</p>
   <dd>Terminates processing of this info file at once.</dd>
 
 </dl>
+<p><i><b>Note:</b></i> wherever <i><b>text</b></i> requires leading blanks or tabs,
+it isn't possible to simply put them into the instruction, as f9dasm would discard them.
+For these cases, simply prepend a '\' (backslash) to the text, like, for example, in<br />
+<b>insert 0 \&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;OPT H63</b><br />
+so that f9dasm knows where <i><b>text</b></i> really starts.
+Despite the similarity, f9dasm doesn't know the range of "C" escape characters; a '\'
+simply means "Ignore this backslash, but make sure the next character is part of the text".
+If you need to have a <b>*</b> as part of the text, it is mandatory to write it as <b>\*</b>;
+f9dasm would otherwise assume the line ends at the <b>*</b>, which starts the comment part.
+</p>
 
 </body>
 </html>

@@ -101,10 +101,16 @@
    V1.77 2017-09-30 forward references to near addresses are prefixed with a direct addressing marker
    V1.78 2019-06-03 PC-relative indirect addressing (like "LDA [XXXX,PCR]") was not correctly disassembled
                     thanks to GitHub user "ep00ch" for pointing that out!
+   V1.79 2020-08-10 switch to ';' as the default comment delimiter, as it's more universal than '*'
+                    Rainer Buchty knew it all along :-)
+                    And, as Ray Bellis reported, there were some overlapping strcpy() calls in the code
+                    which clang misinterpreted badly. See
+                     https://github.com/Arakula/f9dasm/issues/13
+                    for details.
 
 */
 
-#define ID  "1.78"
+#define ID  "1.79"
 
 #if RB_VARIANT
 #define VERSION ID "-RB"
@@ -234,11 +240,11 @@ int  dirpage = 0;                       /* direct page used (default 0)      */
 char * szPrepend = NULL;                /* text to be printed before all     */
 int showhex = TRUE;
 int showaddr = TRUE;
+char cCommChar = ';';                   /* comment delimiter character       */
 #if RB_VARIANT
 int showasc = FALSE;
 int useFlex = FALSE;
 int useConvenience = FALSE;
-char cCommChar = ';';                   /* comment delimiter character       */
 char *forcedirectaddr = "";
 char *forceextendedaddr = "";
 char cLblDelim = ':';
@@ -246,7 +252,6 @@ char cLblDelim = ':';
 int showasc = TRUE;
 int useFlex = TRUE;
 int useConvenience = TRUE;
-char cCommChar = '*';                   /* comment delimiter character       */
 char *forcedirectaddr = "<";
 char *forceextendedaddr = ">";
 char cLblDelim = ' ';
@@ -3632,7 +3637,14 @@ while (fgets(szBuf, sizeof(szBuf), fp))
         q++)
       {
       if (*q == '\\')                   /* process escape character          */
-        strcpy(q, q+1);
+        {
+        char *qw = q;
+        while (*qw)
+          {
+          *qw = *(qw + 1);
+          qw++;
+          }
+        }
       }
     if (*q)
       *q = '\0';
@@ -4494,7 +4506,14 @@ while (fgets(szBuf, sizeof(szBuf), fp))
            q++)
         {
         if (*q == '\\')                 /* process escape character          */
-          strcpy(q, q+1);
+          {
+          char *qw = q;
+          while (*qw)
+            {
+            *qw = *(qw + 1);
+            qw++;
+            }
+          }
         }
 
       if (*q)
@@ -4537,8 +4556,14 @@ while (fgets(szBuf, sizeof(szBuf), fp))
                 int prepcomm = 0;       /* prepend comment char necessary    */
                                         /* if that was an INSERT or PREPEND  */
                 if (commentlines[nScanned][0] == (char)0xff)
-                                        /* remove the INSERT marker          */
-                  strcpy(commentlines[nScanned], commentlines[nScanned] + 1);
+                  {                     /* remove the INSERT marker          */
+                  char *cw = commentlines[nScanned];
+                  while (*cw)
+                    {
+                    *cw = *(cw + 1);
+                    cw++;
+                    }
+                  }
                 else if ((commentlines[nScanned][0]) &&
                          (commentlines[nScanned][0] != '\n'))
                   prepcomm = 2;
@@ -4690,7 +4715,14 @@ while (fgets(szBuf, sizeof(szBuf), fp))
            q++)
         {
         if (*q == '\\')                 /* process escape character          */
-          strcpy(q, q+1);
+          {
+          char *qw = q;
+          while (*qw)
+            {
+            *qw = *(qw + 1);
+            qw++;
+            }
+          }
         }
 
       if (*q)
@@ -4792,7 +4824,14 @@ while (fgets(szBuf, sizeof(szBuf), fp))
            q++)
         {
         if (*q == '\\')                 /* process escape character          */
-          strcpy(q, q + 1);
+          {
+          char *qw = q;
+          while (*qw)
+            {
+            *qw = *(qw + 1);
+            qw++;
+            }
+          }
         }
       if (*q)
         *q = '\0';
