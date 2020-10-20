@@ -3,7 +3,7 @@
  * HEAVILY modified by H.Seib to adapt it to his needs.                    *
  *                                                                         *
  * Line Disassembler Engine Copyright (C) 2000  Arto Salmi                 *
- * Various additions        Copyright (c) 2001-2015 Hermann Seib           *
+ * Various additions        Copyright (c) 2001-2020 Hermann Seib           *
  * Various additions        Copyright (c) 2013 by Colin Bourassa           *
  * Various additions        Copyright (c) 2014 by Rainer Buchty            *
  *                                                                         *
@@ -107,10 +107,13 @@
                     which clang misinterpreted badly. See
                      https://github.com/Arakula/f9dasm/issues/13
                     for details.
-
+   V1.80 2020-10-20 RMB value was output as binary; thanks to GitHub user "ep00ch" for pointing that out!
+                    See
+                     https://github.com/Arakula/f9dasm/issues/16
+                    for details.
 */
 
-#define ID  "1.79"
+#define ID  "1.80"
 
 #if RB_VARIANT
 #define VERSION ID "-RB"
@@ -134,23 +137,25 @@
 
 #define ATTRBYTE(address) (label[(address) & 0xffff])
 
-#define DATATYPE_BYTE   0x00
-#define DATATYPE_WORD   0x08
-#define DATATYPE_DEC    0x00
-#define DATATYPE_BINARY 0x10
-#define DATATYPE_HEX    0x20
+#define DATATYPE_BYTE   0x0000
+#define DATATYPE_WORD   0x0008
+
+#define DATATYPE_DEC    0x0000
+#define DATATYPE_BINARY 0x0010
+#define DATATYPE_HEX    0x0020
 #define DATATYPE_CHAR   (DATATYPE_BINARY | DATATYPE_HEX)
-#define DATATYPE_RMB    (DATATYPE_WORD | DATATYPE_BINARY | DATATYPE_HEX)
 
 /* RB: new vector datatypes */
 #define DATATYPE_DVEC   0x0100
 #define DATATYPE_CVEC   0x0200
 
-#define AREATYPE_CLABEL 0x01
-#define AREATYPE_LABEL  0x02
-#define AREATYPE_ULABEL 0x04
-#define AREATYPE_DATA   0x40
-#define AREATYPE_CODE   0x80
+#define DATATYPE_RMB    0x0400
+
+#define AREATYPE_CLABEL 0x0001
+#define AREATYPE_LABEL  0x0002
+#define AREATYPE_ULABEL 0x0004
+#define AREATYPE_DATA   0x0040
+#define AREATYPE_CODE   0x0080
 #define AREATYPE_WORD   (AREATYPE_DATA | DATATYPE_WORD)
 #define AREATYPE_RMB    (AREATYPE_DATA | DATATYPE_RMB)
 #define AREATYPE_BINARY (AREATYPE_DATA | DATATYPE_BINARY)
@@ -221,12 +226,14 @@ typedef struct _phasedef                /* data for a phase                  */
   unsigned short rel;
   } phasedef;
 
+typedef unsigned short labeltype;
+
 /*****************************************************************************/
 /* Global Data                                                               */
 /*****************************************************************************/
 
 byte *memory = NULL;
-int *label = NULL;                      /* RB: space for more flags          */
+labeltype *label = NULL;                /* RB: space for more flags          */
 byte *used = NULL;
 char **lblnames = NULL;
 char **commentlines = NULL;
@@ -1620,7 +1627,7 @@ return W;
 
 void AddLabel(int MI, word W)
 {
-byte nOr = AREATYPE_ULABEL | AREATYPE_LABEL | mnemo[MI].bCodeJump;
+labeltype nOr = AREATYPE_ULABEL | AREATYPE_LABEL | mnemo[MI].bCodeJump;
 ATTRBYTE(W) |= nOr;
 }
 
@@ -3304,7 +3311,7 @@ printf("Usage: f9dasm [options] <filename>\n"
        " -os9       - patch swi2 (os9 call)\n"
        " -info      - file with additional information [empty]\n"
        "              \"-info help\" shows info file help\n"
-       " -cchar     - comment delimiter character [*]\n"
+       " -cchar     - comment delimiter character [%c]\n"
        " -flex      - use FLEX9 standard labels (default)\n"
        " -noflex    - do not use FLEX9 standard labels\n"
        " -conv      - use convenience mnemonics (default)\n"
@@ -3323,7 +3330,8 @@ printf("Usage: f9dasm [options] <filename>\n"
        " -noforced  - don't set forced direct / extended addressing markers\n"
        " -ldchar    - label delimiter character [ ]\n"
        " -help      - output more extensive help and quit\n"
-       "All values should be entered in hexadecimal\n");
+       "All values should be entered in hexadecimal\n",
+       cCommChar);
 
 if (nQuit)
   exit(1);
@@ -4415,6 +4423,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
             if ((nType != infoConstant) &&
                 (nType != infoBreak))
               ATTRBYTE(nFrom) &= ~(AREATYPE_CODE | AREATYPE_DATA |
+                                   AREATYPE_RMB |
                                    AREATYPE_WORD |
                                    AREATYPE_CHAR | AREATYPE_BINARY | AREATYPE_HEX);
             }
@@ -4430,7 +4439,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
                                 (nType == infoBinary)   ? AREATYPE_BINARY :
                                 (nType == infoWord)     ? (AREATYPE_WORD | bDataType) :
                                 (nType == infoDWord)    ? (AREATYPE_WORD | AREATYPE_CONST | bDataType) :
-                                (nType == infoRMB)      ? AREATYPE_RMB :
+                                (nType == infoRMB)      ? (AREATYPE_RMB | bDataType) :
                                 (nType == infoConstant) ? (AREATYPE_CONST | bDataType) :
                                 (nType == infoBreak)    ? AREATYPE_ULABEL :
                                 (nType == infoHex)      ? AREATYPE_HEX :
@@ -5055,7 +5064,7 @@ for (i = 1, n = 0; i < argc; ++i)
   }
 
 memory = (byte *)malloc(0x10000);
-label = (int *)malloc(0x10000 * sizeof(int));
+label = (labeltype *)malloc(0x10000 * sizeof(labeltype));
 used = (byte *)malloc(0x10000 / 8);
 lblnames = (char **)malloc(0x10000 * sizeof(char *));
 commentlines = (char **)malloc(0x10000 * sizeof(char *));
@@ -5072,7 +5081,7 @@ if ((!memory) || (!label) || (!used) ||
   goto exit;
   }
 memset(memory, 0x01, 0x10000);
-memset(label, 0x00, 0x10000 * sizeof(int));
+memset(label, 0x00, 0x10000 * sizeof(labeltype));
 memset(used, 0x00, 0x10000 / 8);
 memset(lblnames, 0x00, 0x10000 * sizeof(char *));
 memset(commentlines, 0x00, 0x10000 * sizeof(char *));
@@ -5376,7 +5385,10 @@ for (pc = 0x0000; pc <= 0xFFFF; pc++)
     break;
 if (pc > 0xffff)
   goto exit;
-fprintf(out,"        %-7s $%04X\n\n", "ORG", pc);
+if (defaultDataType == DATATYPE_HEX)
+  fprintf(out,"        %-7s $%04X\n\n", "ORG", pc);
+else
+  fprintf(out,"        %-7s %d\n\n", "ORG", pc);
 do
   {
   char *slabel = NULL;
