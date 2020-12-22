@@ -3021,7 +3021,7 @@ if (!strcmp(I,"RTI") ||
     (!strncmp(I, "PUL", 3) && (T & 0x80)) ||  /* PULx PC */
     !strncmp(I, "JMP", 3) ||
     !strncmp(I, "BRA", 3) ||
-    !strncmp(I," SWI", 3) )
+    !strncmp(I, "SWI", 3) )
   optdelimbar = TRUE;
 
 return (PC - pc);
