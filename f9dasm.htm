@@ -55,8 +55,7 @@ program, I've added this documentation. Have fun!</p>
   <dd>disables or enables hex dump output (default is enabled).<br>
   While analyzing a file, the hex dump can be quite helpful; if you want to generate a
   clean assembler source file, you can disable it.</dd>
-  <dt><b>-x</b></dt>
-  <dt><b>-6309</b></dt>
+  <dt><b>-x</b>, <b>-6309</b></dt>
   <dd>puts disassembler in 6309 mode (default is 6809).</dd>
   <dt><b>-6800</b>, <b>-6802</b>, <b>-6808</b> </dt>
   <dd>puts disassembler in 6800/6802/6808 mode (default is 6809).</dd>
@@ -100,7 +99,8 @@ program, I've added this documentation. Have fun!</p>
   <dt><b>-omitzero</b></dt>
   <dd>omit indexed-mode operands of $00 (default)</dd>
   <dt><b>-showzero</b></dt>
-  <dd>do not omit indexed-mode operands of $00</dd>
+  <dd>do not omit indexed-mode operands of $00<br />
+  This only works for 6800-based code; in 6809-based code, omitting the zero is encoded differently.</dd>
   <dt><b>-[no]forced</b></dt>
   <dd>using this flag, the assembler outputs <i>forced direct (&lt;) or extended (&gt;)
   addressing markers</i> where this is necessary to ensure an exact reproduction.<br />
