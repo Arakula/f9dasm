@@ -105,7 +105,8 @@ was tested on Debian 9.
   <dt><b>-omitzero</b></dt>
   <dd>omit indexed-mode operands of $00 (default)</dd>
   <dt><b>-showzero</b></dt>
-  <dd>do not omit indexed-mode operands of $00</dd>
+  <dd>do not omit indexed-mode operands of $00<br>
+  This only works for 6800-based code; in 6809-based code, omitting the zero is encoded differently.</dd>
   <dt><b>-[no]forced</b></dt>
   <dd>using this flag, the assembler outputs <i>forced direct (&lt;) or extended (&gt;)
   addressing markers</i> where this is necessary to ensure an exact reproduction.<br>
