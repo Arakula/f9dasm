@@ -304,7 +304,7 @@ The info file can contain the following instructions:
   <dd>Can be used to patch bytes in a loaded file. Using this feature, modified versions
       of a file can be created automatically.<br>
       <a href="https://github.com/Arakula/A09">A09</a> can be used to emit patch
-      instructions instead of machine code to make it easier to develop a modified version
+      instructions instead of listings to make it easier to develop a modified version
       of a program.</dd>
   <dt><b>patchw <i>addr[-addr] word [word]*</i></b></dt>
   <dd>Can be used to patch words (i.e., 2-byte entities) in a loaded file.</dd>
