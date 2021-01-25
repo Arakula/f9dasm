@@ -300,6 +300,7 @@ The info file can contain the following instructions:
   <dd>defines a <i>data vector</i> area (a table of data addresses).<br>
       Works like <b>word <i>addr[-addr]</i></b>, but also defines data labels for
 	  the addresses if necessary</dd>
+  <dt><b>patch <i>addr[-addr[/step]] hex [hex]*</i></b></dt>
   <dd>Can be used to patch bytes in a loaded file. Using this feature, modified versions
       of a file can be created automatically.<br>
       <a href="https://github.com/Arakula/A09">A09</a> can be used to emit patch
