@@ -3283,6 +3283,8 @@ printf("\n"
        "UNREL[ATIVE] addr[-addr]\n"
        "REMAP addr[-addr] offset\n"
        "PHASE addr[-addr] phase\n"
+       "PATCH addr[-addr] data[...]\n"
+       "PATCHW addr[-addr] data[...]\n"
        "END\n"
 #endif
        );
