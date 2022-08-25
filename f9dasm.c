@@ -4722,7 +4722,7 @@ while (fgets(szBuf, sizeof(szBuf), fp))
         nTo = nFrom;
       for (q = p;
            (*q) &&
-           (*q != '\n') && (*q != '*');
+           (*q != '\n');
            q++)
         {
         if (*q == '\\')                 /* process escape character          */
