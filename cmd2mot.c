@@ -137,7 +137,6 @@ int IsFlex(FILE *f, byte *memory, unsigned *pbegin, unsigned *pend, long *load)
 struct SFlexRecord rec;
 int nCurPos = ftell(f);
 int nRecs = 0;
-int bExecutable = 0;
 int begin = 0x10000;
 int end = 0;
 int i;
@@ -162,10 +161,7 @@ while (ReadFlexRecord(f, &rec))
            GetSize(&rec));
     }
   else if (IsTransferAddress(&rec))
-    {
-    bExecutable = 1;
     *load = GetLoadAddress(&rec);
-    }
   }
 
 if (fgetc(f) != EOF)                    /* if not read through the whole file*/

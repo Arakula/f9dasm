@@ -1,10 +1,10 @@
-PROGS=f9dasm hex2bin mot2bin
+PROGS=f9dasm hex2bin mot2bin cmd2mot
 
 CCFLAGS=-O2 -Wall -Wextra
 
-all: $(PROGS)
+all:	$(PROGS)
 
-%: %.c
+%:	%.c
 	$(CC) $(CCFLAGS) $(<) -o $@
 
 .PHONY clean:
