@@ -111,9 +111,13 @@
                     See
                      https://github.com/Arakula/f9dasm/issues/16
                     for details.
+   V1.81 2022-10-07 option begin and option end didn't work correctly.
+                    See
+                     https://github.com/Arakula/f9dasm/issues/22
+                    for details.
 */
 
-#define ID  "1.80"
+#define ID  "1.81"
 
 #if RB_VARIANT
 #define VERSION ID "-RB"
@@ -268,7 +272,7 @@ byte defaultDataType = DATATYPE_HEX;
 int usefcc = TRUE;
 int showIndexedModeZeroOperand = FALSE;
 char *fname = NULL, *outname = NULL, *infoname = NULL;
-unsigned begin = 0xffff, end = 0, offset = 0;
+unsigned begin = 0x10000, end = 0x10000, offset = 0;
 int load = -1;
 static char *loaded[200] = {0};
 char *sLoadType = "";
@@ -1768,13 +1772,19 @@ unsigned index_parse(int MI, unsigned pc)
 byte T;
 word W;
 word Wrel;
+#if 0
+/* unused in parse */
 char R;
+#endif
 unsigned PC = pc;
 byte bSetLabel = 1;
 
 T = ARGBYTE(PC);
 PC++;
+#if 0
+/* unused in parse */
 R = reg[(T>>5)&0x03];
+#endif
 
 if (T & 0x80)
   {
@@ -2331,15 +2341,24 @@ return nDP;
 
 unsigned Parse(unsigned pc)
 {
-byte O,T,M;
+byte T,M;
 word W;
 int MI;
+#if 0
+/* unused in parse */
+byte O;
 char *I;
+#endif
 unsigned PC = pc;
 byte bSetLabel = 1;
 int dp = GetDirPage(pc);
 
-O = T = OPCODE(PC);
+T = OPCODE(PC);
+#if 0
+/* unused in parse */
+O = T;
+#endif
+
 PC++;
 
 if ((codes10) && (T == 0x10))
@@ -2347,7 +2366,10 @@ if ((codes10) && (T == 0x10))
   T = OPCODE(PC); PC++;
   W = (word)(T*2);
   MI = T = codes10[W++];
+#if 0
+  /* unused in parse */
   I = (char *)mnemo[T].mne;
+#endif
   M = codes10[W];
   
   if ((T == _swi2) && (os9_patch == TRUE))
@@ -2361,14 +2383,20 @@ else if ((codes11) && (T == 0x11))
   T = OPCODE(PC); PC++;
   W = (word)(T*2);
   MI = T = codes11[W++];
+#if 0
+  /* unused in parse */
   I = (char *)mnemo[T].mne;
+#endif
   M = codes11[W];
   }
 else
   {
   W = (word)(T*2);
   MI = T = codes[W++];
+#if 0
+  /* unused in parse */
   I = (char *)mnemo[T].mne;
+#endif
   M = codes[W];
   }
 
@@ -3712,8 +3740,8 @@ int IsRecord(struct SFlexRecord *pRec)
 { return (pRec->bSOI == 0x02); }
 int GetSize(struct SFlexRecord *pRec)
 { return pRec->bDataLen; }
-int GetLoadAddress(struct SFlexRecord *pRec)
-{ return (((int)(pRec->bLoadAddress[0])) << 8) | pRec->bLoadAddress[1]; }
+unsigned GetLoadAddress(struct SFlexRecord *pRec)
+{ return (((unsigned)(pRec->bLoadAddress[0])) << 8) | pRec->bLoadAddress[1]; }
 byte * GetData(struct SFlexRecord *pRec)
 { return pRec->bData; }
 
@@ -3764,15 +3792,14 @@ int IsFlex(FILE *f, byte *memory, unsigned *pbegin, unsigned *pend, int *load)
 struct SFlexRecord rec;
 int nCurPos = ftell(f);
 int nRecs = 0;
-int bExecutable = 0;
-int begin = 0xffff;
-int end = 0;
-int i;
+unsigned begin = 0x10000;
+unsigned end = 0;
+unsigned i;
 
 while (ReadFlexRecord(f, &rec))
   {
-  int nStart = GetLoadAddress(&rec);
-  int nEnd = nStart + GetSize(&rec) - 1;
+  unsigned nStart = GetLoadAddress(&rec);
+  unsigned nEnd = nStart + GetSize(&rec) - 1;
 
   nRecs++;
   if (nStart < begin)
@@ -3792,10 +3819,7 @@ while (ReadFlexRecord(f, &rec))
            GetSize(&rec));
     }
   else if (IsTransferAddress(&rec))
-    {
-    bExecutable = 1;
     *load = GetLoadAddress(&rec);
-    }
   }
 
 if (fgetc(f) != EOF)                    /* if not read through the whole file*/
@@ -3808,9 +3832,11 @@ if (fgetc(f) != EOF)                    /* if not read through the whole file*/
 fseek(f, nCurPos, SEEK_SET);
 if (nRecs > 0)
   {
-  if (begin < (int)(*pbegin))
+  if (*pbegin < begin ||                /* set begin if not specified        */
+      *pbegin > end)
     *pbegin = begin;
-  if (end > (int)*pend)
+  if (*pend < begin ||                  /* set end if not specified          */
+      *pend > end)
     *pend = end;
   sLoadType = "FLEX";
   }
@@ -3854,8 +3880,8 @@ int nCurPos = ftell(f);
 int c = 0, rectype;
 int done = 0;
 int nBytes = 0;
-int begin = 0xffff;
-int end = 0;
+unsigned begin = 0x10000;
+unsigned end = 0;
 int segment = 0;                        /* segment address                   */
 int load = -1;
 
@@ -3880,9 +3906,9 @@ while ((!done) &&
   nAddr = GetHex(f,4) + segment;        /* get address for bytes             */
   if ((nAddr < 0) || (nAddr >= 0x10000)) /* if illegal address               */
     { nBytes = -1; break; }             /* return with error                 */
-  if (nAddr < begin)                    /* adjust start and end values       */
+  if (nAddr < (int)begin)               /* adjust start and end values       */
     begin = nAddr;
-  if (nAddr + nBytesOnLine - 1 > end)
+  if (nAddr + nBytesOnLine - 1 > (int)end)
     end = nAddr + nBytesOnLine - 1;
   nBytes += nBytesOnLine;
   rectype = GetHex(f, 2);               /* fetch record type character       */
@@ -3953,9 +3979,11 @@ while ((!done) &&
 fseek(f, nCurPos, SEEK_SET);
 if (nBytes >= 0)
   {
-  if (begin < (int)*pbegin)
+  if (*pbegin < begin ||                /* set begin if not specified        */
+      *pbegin > end)
     *pbegin = begin;
-  if (end > (int)*pend)
+  if (*pend < begin ||                  /* set end if not specified          */
+      *pend > end)
     *pend = end;
   if (load >= 0)
     *pload = load;
@@ -3976,8 +4004,8 @@ int nCurPos = ftell(f);
 int c = 0;
 int done = 0;
 int nBytes = 0;
-int begin = 0xffff;
-int end = 0;
+unsigned begin = 0x10000;
+unsigned end = 0;
 int load = -1;
 
 if ((c = fgetc(f)) == EOF)              /* look whether starting with 'S'    */
@@ -4016,9 +4044,9 @@ while ((!done) &&
       /* this program only deals with 16bit data, so restrict to 0-$FFFF     */
       if ((nAddr < 0) || (nAddr >= 0x10000)) /* if illegal address           */
         { nBytes = -1; break; }         /* return with error                 */
-      if (nAddr < begin)                /* adjust start and end values       */
+      if (nAddr < (int)begin)           /* adjust start and end values       */
         begin = nAddr;
-      if (nAddr + nBytesOnLine - 1 > end)
+      if (nAddr + nBytesOnLine - 1 > (int)end)
         end = nAddr + nBytesOnLine - 1;
       nBytes += nBytesOnLine;
                                         /* now get the bytes                 */
@@ -4086,9 +4114,11 @@ while ((!done) &&
 fseek(f, nCurPos, SEEK_SET);
 if (nBytes >= 0)
   {
-  if (begin < (int)*pbegin)
+  if (*pbegin < begin ||                /* set begin if not specified        */
+      *pbegin > end)
     *pbegin = begin;
-  if (end > (int)*pend)
+  if (*pend < begin ||                  /* set end if not specified          */
+      *pend > end)
     *pend = end;
   if (load >= 0)
     *pload = load;
@@ -4129,9 +4159,11 @@ if ((!IsFlex(f, memory, pbegin, pend, pload)) &&
   if (offset + off > 0x10000)           /* restrict to 64K area              */
     off = 0x10000 - offset;
 
-  if (offset < *pbegin)                 /* set begin if not specified        */
+  if (*pbegin < offset ||               /* set begin if not specified        */
+      *pbegin >= offset + off)
     *pbegin = offset;
-  if (*pend < offset + off - 1)         /* set end if not specified          */
+  if (*pend < offset ||                 /* set end if not specified          */
+      *pend >= offset + off)
     *pend = offset + off -1;
                                         /* mark area as used                 */
   for (i = offset; i < offset + off; i++)
@@ -4803,10 +4835,15 @@ while (fgets(szBuf, sizeof(szBuf), fp))
             (nTo < 0) || (nTo > 0xffff))
           break;
         if (nType == infoPatch)
+          {
+          SET_USED(nFrom);
           MEMORY(nFrom++) = (byte)(nTo & 0xff);
+          }
         else
           {
+          SET_USED(nFrom);
           MEMORY(nFrom++) = (byte)((nTo >> 8) & 0xff);
+          SET_USED(nFrom);
           MEMORY(nFrom++) = (byte)(nTo & 0xff);
           }
         for (; (*p) && (*p != '*') && (*p != ' ') && (*p != '\t'); p++)
@@ -5040,8 +5077,11 @@ fclose(fp);
 int main(int argc, char *argv[])
 {
 unsigned pc, add;
-int i, n, nComment, isautolabel, curdp, curphase = -1;
+int i, n, nComment, curdp, curphase = -1;
+#if RB_VARIANT
+int isautolabel;
 int lastwasdata = FALSE;  /* RB: get a divider between data and code */
+#endif
 int fvec = FALSE;         /* RB: found vector declaration in label file */
 char buf[256];
 FILE *out = stdout;
@@ -5233,7 +5273,7 @@ if(fvec==TRUE)
       /* target label not defined yet? */
       if(!IS_LABEL(vaddr))
       {
-        lblnames[vaddr]=malloc(20*sizeof(char));
+        lblnames[vaddr]=malloc(30*sizeof(char));
 
         ATTRBYTE(vaddr) |= AREATYPE_LABEL;
 
@@ -5257,8 +5297,28 @@ if(fvec==TRUE)
   }
 }  
 
+if (begin > 0xFFFF)                     /* make sure begin and end are set   */
+  {
+  for (pc = 0x0000; pc <= 0xFFFF; pc++)
+    if (IS_USED(pc))
+      {
+      begin = pc;
+      break;
+      }
+  }
 begin &= 0xFFFF;
+if (end >= 0x10000)
+  {
+  for (pc = 0xFFFF; pc > 0; pc--)
+    if (IS_USED(pc))
+      {
+      end = pc;
+      break;
+      }
+  }
 end &= 0xFFFF;
+if (begin > end)
+  end = begin;
 
 pc = begin;                             /* pass 1 - generate labels          */
 do
@@ -5382,11 +5442,19 @@ if ((curdp != 0) && (codes != m6800_codes) && (codes != m6801_codes))
     fprintf(out, "        %-7s\n\n", "SETDP");
   }
 
+#if 1
+for (pc = begin; pc <= end; pc++)
+  if (IS_USED(pc))
+    break;
+if (pc > end)
+  goto exit;
+#else
 for (pc = 0x0000; pc <= 0xFFFF; pc++)
   if (IS_USED(pc))
     break;
 if (pc > 0xffff)
   goto exit;
+#endif
 if (defaultDataType == DATATYPE_HEX)
   fprintf(out,"        %-7s $%04X\n\n", "ORG", pc);
 else
@@ -5400,17 +5468,17 @@ do
   if (IS_LABEL(pc))
     {
     slabel = label_string((word)pc, 1, (word)pc);
-    isautolabel = !label_at((word)pc);
 
 #if RB_VARIANT
+    isautolabel = !label_at((word)pc);
     /* RB:  make a stronger separation between data and code */
     if (lastwasdata && !(IS_CONST(pc) || IS_DATA(pc)) )
       fprintf(out, "%c------------------------------------------------------------------------\n",cCommChar);
     if (!isautolabel)
       fprintf(out, "\n");
-#endif
 
     lastwasdata = FALSE;
+#endif
     }
 
   if (codes != m6800_codes &&           /* deal with SETDP ranges            */
@@ -5479,7 +5547,9 @@ do
   if (IS_CONST(pc) || IS_DATA(pc))
     {
     add = ShowData(out, pc, (nComment || lcomments[pc]));
+#if RB_VARIANT
     lastwasdata = TRUE;
+#endif
     }
   else
     {
@@ -5533,15 +5603,25 @@ do
   fprintf(out, "\n");
   llen = 0;
 
+#if 1
+  while ((pc <= end) &&                 /* skip unused bytes                 */
+         (!IS_USED(pc)))
+    pc++;
+#else
   while ((pc <= 0xffff) &&              /* skip unused bytes                 */
          (!IS_USED(pc)))
     pc++;
+#endif
 
   if (curphase >= 0 &&                  /* phase definition change?          */
       curphase != GetPhaseDef((word)pc))
     fprintf(out, "\n        %-*s\n\n", 7, "DEPHASE");
 
+#if 1
+  if ((pc <= end) &&                    /* only if still in range,           */
+#else
   if ((pc < 0x10000) &&                 /* only if still in range,           */
+#endif
       (!IS_USED(pc - 1)))               /* if we DID skip something set ORG  */
     fprintf(out, "\n        %-*s $%04X \n\n", 7, "ORG", pc);
 
@@ -5550,7 +5630,11 @@ do
   if (optdelimbar) 
     fprintf(out, "%c------------------------------------------------------------------------\n", cCommChar);
 #endif
+#if 1
+  } while (pc <= end);
+#else
   } while (pc <= 0xffff);
+#endif
 
 fprintf(out, "\n");
 if (load != -1)

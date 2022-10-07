@@ -1,7 +1,7 @@
 # F9DASM - 6800/6801/6802/6803/6808/6809 / 6301/6303/6309 Disassembler
 
 Copyright (c) 2000 Arto Salmi  
-&#13;&#10;Parts Copyright (c) 2001-2020 Hermann Seib  
+&#13;&#10;Parts Copyright (c) 2001-2022 Hermann Seib  
 &#13;&#10;Parts Copyright (c) 2013 Colin Bourassa  
 &#13;&#10;Parts Copyright (c) 2014-2015 Rainer Buchty
 
@@ -18,7 +18,7 @@ F9DASM has reached a level of complexity that doesn't really lend itself to foll
 the Source, Luke!" principle if you just want to disassemble a little 6809 
 program, I've added this documentation. Have fun!
 
-Hermann Seib, 2015
+Hermann Seib, 2022
 
 ## Building
 
@@ -50,7 +50,7 @@ was tested on Debian 9.
   <dt><b>-end <i>address</i></b></dt>
   <dd>end disassembly address (<i>address</i> has to be given in hex format)<br>
       Normally, this is defined either through the file size or its contents,
-	  if it has an embedded END addres. This option allows to override the implicit
+	  if it has an embedded END address. This option allows to override the implicit
 	  end address.</dd>
   <dt><b>-out <i>filename</i></b></dt>
   <dd>normally, f9dasm streams to standard output;
