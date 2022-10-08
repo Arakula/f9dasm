@@ -20,9 +20,23 @@ program, I've added this documentation. Have fun!
 
 Hermann Seib, 2022
 
+## Included programs
+
+`f9dasm` is the disassembler itself.
+
+Also included are some little utilities:
+
+`hex2bin` can be used to convert Intel Hex-formatted files to binary files.
+
+`mot2bin` can be used to convert Motorola S-formatted files to binary files.
+
+`cmd2mot` can be used to convert FLEX9 binaries to Motorola S-formatted files.
+
+`f9dasm` doesn't need these utilities, it can handle all four input formats.
+
 ## Building
 
-`f9dasm`, `hex2bin` and `mot2bin` are command line tools written in
+`f9dasm`, `hex2bin`, `mot2bin`, and `cmd2mot` are command line tools written in
 fairly generic C that should compile on a wide range of systems.
 
 For Microsoft Visual Studio, `.dsp`, `.dsw` (Visual Studio 6), `.sln`, and `.vcproj`
