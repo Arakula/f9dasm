@@ -112,12 +112,15 @@
                      https://github.com/Arakula/f9dasm/issues/16
                     for details.
    V1.81 2022-10-07 option begin and option end didn't work correctly.
+   V1.82 2022-10-08 file directive without base address didn't work correctly.
+                    begin and end options also should work better.
+                    Thanks to Github user "Twilight-Logic" for reporting the issue.
                     See
                      https://github.com/Arakula/f9dasm/issues/22
-                    for details.
+                    for details on V1.81 and V1.82.
 */
 
-#define ID  "1.81"
+#define ID  "1.82"
 
 #if RB_VARIANT
 #define VERSION ID "-RB"
@@ -272,7 +275,7 @@ byte defaultDataType = DATATYPE_HEX;
 int usefcc = TRUE;
 int showIndexedModeZeroOperand = FALSE;
 char *fname = NULL, *outname = NULL, *infoname = NULL;
-unsigned begin = 0x10000, end = 0x10000, offset = 0;
+unsigned begin = 0x10000, end = 0x10000, offset = 0, lastload = (unsigned)-1;
 int load = -1;
 static char *loaded[200] = {0};
 char *sLoadType = "";
@@ -3402,6 +3405,7 @@ switch (j)
     if (!value)
       usage(1);
     offset = strtoul(value, NULL, 16);
+    lastload = (unsigned)(offset - 1);
     break;
   case OPTION_OUT :
     nAdd++;
@@ -3787,7 +3791,7 @@ return TRUE;
 /* IsFlex : returns whether this is a FLEX binary                            */
 /*****************************************************************************/
 
-int IsFlex(FILE *f, byte *memory, unsigned *pbegin, unsigned *pend, int *load)
+int IsFlex(FILE *f, byte *memory, int *load)
 {
 struct SFlexRecord rec;
 int nCurPos = ftell(f);
@@ -3795,18 +3799,21 @@ int nRecs = 0;
 unsigned begin = 0x10000;
 unsigned end = 0;
 unsigned i;
+unsigned int ll = 0x10000;
 
 while (ReadFlexRecord(f, &rec))
   {
+  int recsz = GetSize(&rec);
   unsigned nStart = GetLoadAddress(&rec);
-  unsigned nEnd = nStart + GetSize(&rec) - 1;
+  unsigned nEnd = nStart + recsz - 1;
 
   nRecs++;
   if (nStart < begin)
     begin = nStart;
   if (nEnd > end)
     end = nEnd;
-  if (IsRecord(&rec) && GetSize(&rec))
+
+  if (IsRecord(&rec) && recsz > 0)
     {
     for (i = nStart; i <= nEnd; i++)    /* mark area as used                 */
       {
@@ -3816,7 +3823,8 @@ while (ReadFlexRecord(f, &rec))
 
     memcpy(memory + nStart,
            GetData(&rec),
-           GetSize(&rec));
+           recsz);
+    ll = nStart + recsz - 1;
     }
   else if (IsTransferAddress(&rec))
     *load = GetLoadAddress(&rec);
@@ -3832,12 +3840,8 @@ if (fgetc(f) != EOF)                    /* if not read through the whole file*/
 fseek(f, nCurPos, SEEK_SET);
 if (nRecs > 0)
   {
-  if (*pbegin < begin ||                /* set begin if not specified        */
-      *pbegin > end)
-    *pbegin = begin;
-  if (*pend < begin ||                  /* set end if not specified          */
-      *pend > end)
-    *pend = end;
+  if (ll < 0x10000)
+    lastload = ll;
   sLoadType = "FLEX";
   }
 return (nRecs > 0);
@@ -3874,7 +3878,7 @@ return out;
 /* IsIntelHex : tries to load as an Intel HEX file                           */
 /*****************************************************************************/
 
-int IsIntelHex(FILE *f, byte *memory, unsigned *pbegin, unsigned *pend, int *pload)
+int IsIntelHex(FILE *f, byte *memory, int *pload)
 {
 int nCurPos = ftell(f);
 int c = 0, rectype;
@@ -3923,6 +3927,7 @@ while ((!done) &&
         memory[nAddr + i] = (byte)c;    /* otherwise add memory byte         */
         SET_USED(nAddr + i);            /* mark as used byte                 */
         ATTRBYTE(nAddr + i) |= defaultDataType;
+        lastload = nAddr + i;
         }
       break;
     case 1 :                            /* End Of File record                */
@@ -3979,12 +3984,6 @@ while ((!done) &&
 fseek(f, nCurPos, SEEK_SET);
 if (nBytes >= 0)
   {
-  if (*pbegin < begin ||                /* set begin if not specified        */
-      *pbegin > end)
-    *pbegin = begin;
-  if (*pend < begin ||                  /* set end if not specified          */
-      *pend > end)
-    *pend = end;
   if (load >= 0)
     *pload = load;
   }
@@ -3998,7 +3997,7 @@ return (nBytes > 0);                    /* pass back #bytes interpreted      */
 /* IsMotorolaHex : tries to load as a Motorola HEX file                      */
 /*****************************************************************************/
 
-int IsMotorolaHex(FILE *f, byte *memory, unsigned *pbegin, unsigned *pend, int *pload)
+int IsMotorolaHex(FILE *f, byte *memory, int *pload)
 {
 int nCurPos = ftell(f);
 int c = 0;
@@ -4058,6 +4057,7 @@ while ((!done) &&
         memory[nAddr + i] = (byte)c;    /* otherwise add memory byte         */
         SET_USED(nAddr + i);            /* mark as used byte                 */
         ATTRBYTE(nAddr + i) |= defaultDataType;
+        lastload = nAddr + i;
         }
       break;
     case '2' :                          /* record with 24bit address         */
@@ -4114,12 +4114,6 @@ while ((!done) &&
 fseek(f, nCurPos, SEEK_SET);
 if (nBytes >= 0)
   {
-  if (*pbegin < begin ||                /* set begin if not specified        */
-      *pbegin > end)
-    *pbegin = begin;
-  if (*pend < begin ||                  /* set end if not specified          */
-      *pend > end)
-    *pend = end;
   if (load >= 0)
     *pload = load;
   }
@@ -4136,7 +4130,7 @@ return (nBytes > 0);                    /* pass back #bytes interpreted      */
 int loadfile
     (
     char *fn,
-    unsigned *pbegin, unsigned *pend, int *pload, unsigned offset,
+    int *pload, unsigned offset,
     FILE *out
     )
 {
@@ -4144,11 +4138,11 @@ FILE *f = fopen(fn,"rb");
 if (!f)
   return 1;
                                         /* if not a FLEX binary              */
-if ((!IsFlex(f, memory, pbegin, pend, pload)) &&
+if ((!IsFlex(f, memory, pload)) &&
                                         /* and not an Intel HEX file         */
-    (!IsIntelHex(f, memory, pbegin, pend, pload)) &&
+    (!IsIntelHex(f, memory, pload)) &&
                                         /* and not a Motorola HEX file       */
-    (!IsMotorolaHex(f, memory, pbegin, pend, pload)))
+    (!IsMotorolaHex(f, memory, pload)))
   {                                     /* load as normal binary image       */
   unsigned int i, off;
   fseek(f,0,SEEK_END);
@@ -4158,13 +4152,6 @@ if ((!IsFlex(f, memory, pbegin, pend, pload)) &&
   /* naive tests by J. Sigle showed that the logic was not robust enough...  */
   if (offset + off > 0x10000)           /* restrict to 64K area              */
     off = 0x10000 - offset;
-
-  if (*pbegin < offset ||               /* set begin if not specified        */
-      *pbegin >= offset + off)
-    *pbegin = offset;
-  if (*pend < offset ||                 /* set end if not specified          */
-      *pend >= offset + off)
-    *pend = offset + off -1;
                                         /* mark area as used                 */
   for (i = offset; i < offset + off; i++)
     {
@@ -4175,6 +4162,8 @@ if ((!IsFlex(f, memory, pbegin, pend, pload)) &&
             sizeof(byte),
             0x10000-(offset&0xFFFF),
             f);
+  if (i)
+    lastload = offset + i - 1;
   sLoadType = "binary";
   }
 
@@ -4976,10 +4965,10 @@ while (fgets(szBuf, sizeof(szBuf), fp))
         break;
       else if (nScanned == 1)
         nTo = nFrom;
-      if (*p == '-')
+      while (*p == '-')
         {
         p++;
-        minus = -1;
+        minus = -minus;
         }
       nScanned = sscanf(p, "%x", &nremap);
       if (nScanned < 1)
@@ -5007,10 +4996,10 @@ while (fgets(szBuf, sizeof(szBuf), fp))
         *p++ = '\0';
       nScanned = sscanf(p, "%x", &nFrom);
       if (nScanned < 1)
-        nFrom = end;
+        nFrom = lastload + 1;
       if ((!*fname) || (nFrom < 0) || (nFrom >= 0x10000))
         break;
-      loadfile(fname, &begin, &end, &load, nFrom, outfile);
+      loadfile(fname, &load, nFrom, outfile);
       }
       break;
     case infoPhase :                    /* PHASE addr[-addr] phase           */
@@ -5160,7 +5149,7 @@ nComment = (showaddr || showhex || showasc);
 AddFlexLabels();                        /* make sure all FLEX labels are OK  */
 
                                         /* load initial file                 */
-if (fname && loadfile(fname, &begin, &end, &load, offset, out))
+if (fname && loadfile(fname, &load, offset, out))
   {
   printf("Error loading %s\n", fname);
   return 1;
