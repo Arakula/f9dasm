@@ -118,9 +118,15 @@
                     See
                      https://github.com/Arakula/f9dasm/issues/22
                     for details on V1.81 and V1.82.
+   V1.83 2023-07-04 operations like LDA [-1,X] could lead to code that would
+                    be assembled to a different instruction.
+                    Thanks to Github user "mjwurtz" for reporting the issue.
+                    See
+                     https://github.com/Arakula/f9dasm/issues/24
+                    for details.
 */
 
-#define ID  "1.82"
+#define ID  "1.83"
 
 #if RB_VARIANT
 #define VERSION ID "-RB"
@@ -2166,11 +2172,13 @@ if (T & 0x80)
       sprintf(buf,"[A,%c]", R);
       break;
     case 0x18:
-      T = ARGBYTE(PC);
+      {
+      signed char c = (signed char)ARGBYTE(PC);
       PC++;
       sprintf(buf,"[%s,%c]",
-              number_string(T, 2, (word)(PC - 1)),
+              signed_string(c, 2, (word)(PC - 1)),
               R);
+      }
       break;
     case 0x19:
       bGetLabel = !IS_CONST(PC);
